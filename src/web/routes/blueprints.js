@@ -76,12 +76,24 @@ router.get(
 );
 
 // A blueprint addressed by id is "not found" when its source server is hidden
-// from the caller, the same answer the list and download give.
-function requireVisibleBlueprint(req, id) {
+// from the caller, the same answer the list gives. Reading its contents
+// (download, preview, import) or deleting it also needs `files` on the source
+// server, or admin when it has none: it carries server.properties and config.
+function requireUsableBlueprint(req, id) {
   const row = blueprints.getBlueprint(id);
-  if (row && !blueprints.blueprintVisibleTo(req.user, row)) {
+  if (!row || !blueprints.blueprintVisibleTo(req.user, row)) {
     throw httpError(404, 'Blueprint not found.');
   }
+  if (!blueprints.blueprintUsableBy(req.user, row)) {
+    logger.debug('Refused a blueprint action without the files permission.', { blueprintId: id });
+    throw httpError(
+      403,
+      row.manifest && row.manifest.sourceServerId
+        ? "You don't have the files permission on the server this blueprint came from."
+        : 'Only an admin can use this blueprint because it is not tied to a server.'
+    );
+  }
+  return row;
 }
 
 // Exporting or cloning reads the whole server tree (server.properties included),
@@ -136,7 +148,7 @@ router.post(
       return res.json({ ok: true, preview, uploadToken: req.file.filename });
     }
     const { blueprintId } = z.object({ blueprintId: z.string().trim().min(1).max(40) }).parse(req.body || {});
-    requireVisibleBlueprint(req, blueprintId);
+    requireUsableBlueprint(req, blueprintId);
     const preview = await blueprints.importPreview(blueprints.getBlueprintPath(blueprintId));
     res.json({ ok: true, preview, blueprintId });
   })
@@ -157,7 +169,7 @@ router.post(
       .parse(req.body);
 
     let zipRef = input.blueprintId;
-    if (input.blueprintId) requireVisibleBlueprint(req, input.blueprintId);
+    if (input.blueprintId) requireUsableBlueprint(req, input.blueprintId);
     if (input.uploadToken) {
       zipRef = dataPath('tmp', input.uploadToken);
       if (!fs.existsSync(zipRef)) {
@@ -205,10 +217,7 @@ router.post(
 router.get(
   '/:id/download',
   asyncHandler((req, res, next) => {
-    const row = blueprints.getBlueprint(req.params.id);
-    if (!row || !blueprints.blueprintVisibleTo(req.user, row)) {
-      return res.status(404).json({ ok: false, error: 'Blueprint not found.' });
-    }
+    const row = requireUsableBlueprint(req, req.params.id);
     res.download(dataPath(row.rel_path), row.filename);
   })
 );
@@ -216,7 +225,7 @@ router.get(
 router.delete(
   '/:id',
   asyncHandler(async (req, res, next) => {
-    requireVisibleBlueprint(req, req.params.id);
+    requireUsableBlueprint(req, req.params.id);
     res.json({ ok: true, ...(await blueprints.deleteBlueprint(req.params.id, { actor: req.user.username })) });
   })
 );

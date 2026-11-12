@@ -22,6 +22,10 @@ its own dated entry.
   map is now served under a signed link that expires after six hours, inside a sandboxed frame with
   no access to the panel's sign-in. The old `/map/<server>/` address no longer works. Reopen the Map
   tab to get a fresh link.
+- **Blueprints need the files permission to read.** Downloading, previewing, importing or deleting a
+  saved blueprint now needs the files permission on the server it came from, the same as exporting
+  it. A blueprint that is not tied to a server is admin-only. New exports leave `rcon.password`
+  blank in `server.properties`. Blueprints exported before this release still contain it.
 
 ## [0.14.1] - 2026-09-21
 

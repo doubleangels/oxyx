@@ -250,7 +250,14 @@ async function exportBlueprint(serverId, options = {}, { actor = 'system' } = {}
     archive.pipe(output);
     archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
     for (const rel of configFiles) {
-      archive.file(safeJoin(serverDir, rel), { name: `payload/config/${rel}` });
+      if (rel === 'server.properties') {
+        // The RCON password is a live credential for the source server. The
+        // importing server gets its own from the panel, so leave it blank.
+        const text = fs.readFileSync(safeJoin(serverDir, rel), 'utf8');
+        archive.append(stripRconPassword(text), { name: `payload/config/${rel}` });
+      } else {
+        archive.file(safeJoin(serverDir, rel), { name: `payload/config/${rel}` });
+      }
     }
     if (embedFiles) {
       for (const row of overlayRows) {
@@ -674,6 +681,23 @@ function blueprintVisibleTo(user, bp) {
   return permissions.can(user, sid, 'view');
 }
 
+/**
+ * May `user` download, preview by id, import by id or delete this blueprint?
+ * A blueprint carries server.properties and every config file, so it needs the
+ * same `files` capability on its source server that exporting it did. One with
+ * no live source server (uploaded, older, or its server was deleted) has no
+ * one to scope it to, so it is admin-only. Built-in starters hold nothing
+ * private and stay open to everyone.
+ */
+function blueprintUsableBy(user, bp) {
+  if (!bp || !user) return false;
+  if (bp.builtin) return true;
+  if (user.role === 'admin') return true;
+  const sid = bp.manifest && bp.manifest.sourceServerId;
+  if (!sid || !servers.getServer(sid)) return false;
+  return permissions.can(user, sid, 'files');
+}
+
 function listBlueprintsFor(user) {
   return listBlueprints().filter((bp) => blueprintVisibleTo(user, bp));
 }
@@ -860,6 +884,11 @@ function sanitizeEnv(env) {
   return Object.fromEntries(Object.entries(env || {}).filter(([k]) => !SECRET_ENV_RE.test(k)));
 }
 
+/** Blank the value of every `rcon.password=` line in server.properties text. */
+function stripRconPassword(text) {
+  return String(text).replace(/^([ \t]*rcon\.password[ \t]*[=:]).*$/gm, '$1');
+}
+
 function collectConfigFiles(serverDir) {
   const rels = [];
   if (fs.existsSync(path.join(serverDir, 'server.properties'))) rels.push('server.properties');
@@ -922,6 +951,8 @@ module.exports = {
   listBlueprints,
   listBlueprintsFor,
   blueprintVisibleTo,
+  blueprintUsableBy,
+  stripRconPassword,
   getBlueprint,
   getBlueprintPath,
   deleteBlueprint,
