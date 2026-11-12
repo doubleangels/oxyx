@@ -31,8 +31,15 @@ its own dated entry.
   restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
   nothing supervises the process. Unhandled promise rejections are still logged without exiting.
 
+- **The compose file pins the image to a release.** `docker-compose.yml` now uses
+  `ghcr.io/doubleangels/oxyx:${OXYX_TAG:-v0.14.1}` instead of `:latest`, so an unattended pull never
+  jumps a version. Set `OXYX_TAG` to upgrade. The runtime image no longer contains pnpm.
+
 ### Security
 
+- **Optional Docker socket proxy.** `deploy/docker-compose.socket-proxy.yml` runs the panel without
+  the raw Docker socket: a proxy sidecar passes on only containers, exec, images, networks, events
+  and the version and info probes.
 - **Blueprint import only reads files from its own archive.** An overlay file name or config file
   path in a blueprint manifest must now be a plain name or a relative path inside the server folder.
   A blueprint that names anything else is refused before a server is created, and symlinks inside

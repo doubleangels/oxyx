@@ -69,6 +69,10 @@ by host path).
 
 A pre-built multi-arch image (amd64 + arm64) is published to GHCR on every release:
 `ghcr.io/doubleangels/oxyx:latest` (or pin a version tag, e.g. `:v0.14.1`).
+The shipped `docker-compose.yml` pins the current release; set `OXYX_TAG` to upgrade (or to `latest`
+to follow every release). To keep the raw Docker socket out of the panel container, use
+`deploy/docker-compose.socket-proxy.yml`, which puts a socket proxy in front of the daemon that only
+passes the API sections the panel needs.
 
 On a fresh Linux server, the installer does the whole thing: installs Docker if it's missing, writes
 `/opt/oxyx`, starts the panel, and waits until it answers.

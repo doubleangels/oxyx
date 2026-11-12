@@ -40,6 +40,13 @@ COPY public ./public
 COPY scripts/build-js.js ./scripts/build-js.js
 COPY src ./src
 RUN pnpm run build
+# Production dependencies, resolved here from the same store, so the runtime
+# image needs no package manager at all. --offline: the store already holds
+# everything (pnpm fetch above); the cache mount is a separate filesystem, so
+# pnpm copies rather than hard-links and the result is a self-contained tree.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    mkdir /prod && cp package.json pnpm-lock.yaml pnpm-workspace.yaml /prod/ && \
+    cd /prod && pnpm install --frozen-lockfile --prod --offline --ignore-scripts
 
 # Runtime stage: production deps + the app, with the built CSS + JS bundles overlaid.
 FROM node:24-alpine
@@ -52,17 +59,10 @@ ENV NODE_ENV=production \
     PANEL_HOST=0.0.0.0 \
     PANEL_PORT=25564 \
     LOG_PRETTY=false
-# Reuse the pnpm the build stage already downloaded instead of fetching it again
-# (one less network dependency in this stage). The bin path is read from pnpm's
-# own package.json so a PNPM_VERSION bump can't leave a dangling symlink.
-COPY --from=build /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
-RUN ln -s "../lib/node_modules/pnpm/$(node -p "require('/usr/local/lib/node_modules/pnpm/package.json').bin.pnpm")" /usr/local/bin/pnpm
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# --ignore-scripts: nothing in the production dependency set has a build script
-# (the one allowed script, esbuild's, is a devDependency), so scripts/ needn't
-# be present for this layer and seed-script churn can't invalidate it.
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prod --ignore-scripts
+# Production node_modules come ready-made from the build stage: no pnpm (and
+# none of its download and script machinery) ships in the runtime image.
+COPY package.json ./
+COPY --from=build /prod/node_modules ./node_modules
 # Least-volatile inputs first so a src-only change re-copies as little as possible.
 COPY --from=build /app/public ./public
 COPY views ./views
@@ -73,6 +73,8 @@ VOLUME /data
 # Runs as root: the mounted Docker socket needs it (the host's docker-group GID
 # is unknowable at build time), and a socket-holding container is already
 # root-equivalent on the host - dropping privileges here would only pretend.
+# To narrow what the panel can ask the daemon for, put a socket proxy in front
+# of it instead: deploy/docker-compose.socket-proxy.yml.
 # /healthz is unauthenticated, checks the DB, and returns 503 on failure - a
 # truer liveness signal than /login (which only proves the HTTP listener is up).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \

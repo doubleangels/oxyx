@@ -17,7 +17,10 @@
 # container-local ones.
 services:
   panel:
-    image: ghcr.io/doubleangels/oxyx:latest
+    # Pinned to a release so an unattended `docker compose pull` never jumps a
+    # version. Set OXYX_TAG (e.g. in .env) to upgrade, or to `latest` to follow
+    # every release.
+    image: ghcr.io/doubleangels/oxyx:${OXYX_TAG:-v0.14.1}
     container_name: oxyx
     restart: unless-stopped
     # A tiny init as PID 1 forwards SIGTERM to Node and reaps zombies, so
