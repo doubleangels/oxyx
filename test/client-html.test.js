@@ -24,16 +24,13 @@ test('every interpolated value is escaped', () => {
 
 test('nested html and raw() are not double-escaped; arrays join; null is empty', () => {
   const items = ['<a>', 'b'];
-  assert.equal(
-    String(
-      html`<ul>
-        ${items.map((i) => html`<li>${i}</li>`)}
-      </ul>`
-    ),
-    '<ul><li>&lt;a&gt;</li><li>b</li></ul>'
-  );
+  // Prettier formats html`` templates as HTML, so keep this one byte-exact.
+  // prettier-ignore
+  const list = html`<ul>${items.map((i) => html`<li>${i}</li>`)}</ul>`;
+  assert.equal(String(list), '<ul><li>&lt;a&gt;</li><li>b</li></ul>');
   assert.equal(String(html`${raw('<svg></svg>')}${null}${undefined}${0}`), '<svg></svg>0');
-  assert.equal(String(html`${['<x>', html`<y />`]}`), '&lt;x&gt;<y/>');
+  // prettier-ignore
+  assert.equal(String(html`${['<x>', html`<y/>`]}`), '&lt;x&gt;<y/>');
 });
 
 test('the result works anywhere a string does (innerHTML assignment stringifies)', () => {
