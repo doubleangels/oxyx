@@ -674,7 +674,7 @@ function askWarning({ action, name, online }) {
 }
 
 // ---- Server pages: live status in the tab / app title ----
-// "🟢 Alpha Survival (Running) · MSM": a start, stop or crash shows in the tab
+// "🟢 Alpha Survival (Running) · Oxyx": a start, stop or crash shows in the tab
 // strip and the app switcher without opening the page. Updated by the shared
 // live poll above.
 const STATUS_TITLE = {
@@ -688,7 +688,7 @@ const STATUS_TITLE = {
 };
 function setServerTitle(head, status) {
   const [dot, label] = STATUS_TITLE[status] || ['⚪', status];
-  setBaseTitle(`${dot} ${head.dataset.serverName} (${label}) · MSM`);
+  setBaseTitle(`${dot} ${head.dataset.serverName} (${label}) · Oxyx`);
 }
 {
   const head = document.querySelector('[data-server-title]');

@@ -1,5 +1,10 @@
 # Oxyx Documentation
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/oxyx-logo-dark.svg">
+  <img src="brand/oxyx-logo-light.svg" alt="Oxyx" width="240">
+</picture>
+
 A complete, self-hosted control panel for [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server). Create, run, and manage Minecraft servers from your browser. No command line, no editing YAML by hand.
 
 ![Dashboard](images/dashboard.png)

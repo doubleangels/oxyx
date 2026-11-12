@@ -37,6 +37,12 @@ its own dated entry.
 
 ### Changed
 
+- **New Oxyx logo and app icons.** A pixel-art mark (an "O" with an "x" at its core) replaces the
+  pickaxe in the sidebar, sign-in pages, browser tab, home-screen icons, notification badge and iOS
+  launch screens, and the wordmark now reads OXYX instead of "Minecraft Server Manager". The browser
+  tab on a server page and the update button now say Oxyx. Every asset is generated from one grid by
+  `pnpm run build:brand`.
+
 - **Faster page loads after the first.** Client scripts are built with content-hashed names and the
   stylesheet link carries a content version, so browsers cache both for a year instead of
   rechecking every file on every page. An update changes the URLs, so new code still loads at once.

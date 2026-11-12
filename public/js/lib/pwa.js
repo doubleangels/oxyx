@@ -121,8 +121,8 @@ export function notify(title, { body = '', url = '/' } = {}) {
   if (document.visibilityState === 'visible') return;
   const opts = {
     body,
-    icon: '/icons/pickaxe-192.png',
-    badge: '/icons/pickaxe-badge-96.png',
+    icon: '/icons/oxyx-192.png',
+    badge: '/icons/oxyx-badge-96.png',
     data: { url },
     tag: title,
   };

@@ -476,7 +476,7 @@ function init() {
           msmUpdateOut.innerHTML = `
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <span class="chip">Update available: v${esc(u.latest.version)}</span>
-              <a class="btn" href="${esc(u.latest.htmlUrl)}" target="_blank" rel="noopener noreferrer">Update MSM</a>
+              <a class="btn" href="${esc(u.latest.htmlUrl)}" target="_blank" rel="noopener noreferrer">Update Oxyx</a>
             </div>
             <p class="help mt-1">You are running v${esc(u.current)}. Download the release and follow its install instructions.</p>`;
         } else if (u.latest) {

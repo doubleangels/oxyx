@@ -2,7 +2,7 @@
 // that update it never overwrite each other:
 //   "(2) " - running background tasks (taskTray.js)
 //   base   - the page title, which on a server page carries its live status
-//            ("🟢 Alpha Survival (Running) · MSM", see app.js)
+//            ("🟢 Alpha Survival (Running) · Oxyx", see app.js)
 
 let base = document.title;
 let prefix = '';

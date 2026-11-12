@@ -1,4 +1,9 @@
-# Oxyx
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/oxyx-logo-dark.svg">
+    <img src="docs/brand/oxyx-logo-light.svg" alt="Oxyx" width="300">
+  </picture>
+</h1>
 
 <p align="center">
   <img src="docs/screenshots/01-dashboard.png" alt="Dashboard with all Minecraft servers at a glance" width="920">
