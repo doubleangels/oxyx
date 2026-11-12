@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Public read-only API tokens. Admin only.
@@ -47,7 +46,7 @@ router.post(
   requireRoleKeys('admin'),
   asyncHandler((req, res, next) => {
     const input = apiTokenCreateSchema.parse(req.body);
-    if (!input.scopeAll) for (const id of input.serverIds) requireServer(id); // 404 on unknown id
+    if (!input.scopeAll) for (const id of input.serverIds || []) requireServer(id); // 404 on unknown id
     const created = apiTokens.createToken(
       {
         label: input.label,

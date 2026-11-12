@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Per-server feature mounts (blueprints, worlds, files, crashes, players, integrations, analytics, inventory, items) plus world quick controls, world shrink, admin chat and the live map.

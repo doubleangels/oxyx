@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Scoped file manager. serverId scopes every operation to

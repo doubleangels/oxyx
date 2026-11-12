@@ -23,6 +23,7 @@ const RUNNING = new Set(['running', 'starting', 'unhealthy', 'stalled']);
 const DEDUPE_WINDOW_MS = 5000; // paired lines (logged-in/joined, lost-connection/left)
 
 const taps = new Map(); // serverId -> { stop }
+/** @type {NodeJS.Timeout | null} */
 let pollTimer = null;
 
 // Docker prepends this RFC3339(Nano) receive time to each line when

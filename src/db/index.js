@@ -9,6 +9,7 @@ const { DatabaseSync } = require('node:sqlite');
 const config = require('../config');
 const logger = require('../logger')('db');
 
+/** @type {import('node:sqlite').DatabaseSync | null} */
 let db = null;
 
 // Prepared statements are reusable across calls in node:sqlite, so cache them

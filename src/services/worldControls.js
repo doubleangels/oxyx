@@ -438,7 +438,7 @@ function offlineStateFromLevelData(data, opts = {}) {
   const state = { offline: true };
   if (!data || typeof data !== 'object') return state;
 
-  const dayTime = longToNum(data.DayTime);
+  const dayTime = longToNum(data.DayTime) ?? NaN;
   if (Number.isFinite(dayTime)) {
     const ticks = ((dayTime % 24000) + 24000) % 24000;
     state.timeTicks = ticks;
@@ -454,11 +454,11 @@ function offlineStateFromLevelData(data, opts = {}) {
               : 'Sunrise';
     state.clock = clockFromTicks(ticks);
   }
-  const gameTime = longToNum(data.Time);
+  const gameTime = longToNum(data.Time) ?? NaN;
   if (Number.isFinite(gameTime)) state.day = Math.floor(gameTime / 24000) + 1;
 
   // level.dat stores Difficulty as a 0-3 byte (peaceful..hard).
-  const diff = longToNum(data.Difficulty);
+  const diff = longToNum(data.Difficulty) ?? NaN;
   if (Number.isFinite(diff) && DIFFICULTIES[diff]) state.difficulty = DIFFICULTIES[diff];
 
   // level.dat GameRules keys are camelCase on <=1.21 and snake_case on 26.x -

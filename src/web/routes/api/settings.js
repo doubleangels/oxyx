@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Panel settings: public domain, update check, new-server defaults, localization.

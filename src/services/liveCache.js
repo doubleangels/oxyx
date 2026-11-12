@@ -53,6 +53,7 @@ const PHASES = [
 ];
 
 function classifyPhase(logTail) {
+  /** @type {(typeof PHASES)[number] | null} */
   let found = null;
   for (const phase of PHASES) {
     if (phase.re.test(logTail)) found = phase; // last (deepest) match wins
@@ -65,7 +66,25 @@ function classifyPhase(logTail) {
   return { key: found.key, label: found.label };
 }
 
-const entries = new Map(); // serverId -> {stats, players, uptimeStartedAt, stopStats, timers}
+/**
+ * @typedef {object} LiveEntry
+ * @property {any} stats
+ * @property {any} players
+ * @property {string | null} startedAt
+ * @property {boolean} upConfirmed
+ * @property {(() => void) | null} stopStats
+ * @property {NodeJS.Timeout | null} playerTimer
+ * @property {any} perf
+ * @property {string[] | false | null} perfCmd array once a probe works, false once all have been tried
+ * @property {boolean} perfSupported
+ * @property {NodeJS.Timeout | null} perfTimer
+ * @property {string | null} containerId
+ * @property {{ key: string, label: string } | null} [phase]
+ * @property {NodeJS.Timeout | null} [phaseTimer]
+ */
+/** @type {Map<string, LiveEntry>} serverId -> live entry */
+const entries = new Map();
+/** @type {NodeJS.Timeout | null} */
 let syncTimer = null;
 let syncing = false;
 
@@ -132,6 +151,7 @@ function statusDetail(live) {
 
 async function attach(serverId, containerId = null) {
   if (entries.has(serverId)) return;
+  /** @type {LiveEntry} */
   const entry = {
     stats: null,
     players: null,

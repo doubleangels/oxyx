@@ -19,7 +19,7 @@ let settled = false;
 const finish = (msg) => {
   if (settled) return;
   settled = true;
-  parentPort.postMessage(msg);
+  parentPort?.postMessage(msg);
 };
 
 const output = fs.createWriteStream(outFile);
@@ -46,7 +46,7 @@ output.on('close', () => finish({ type: 'done' }));
 output.on('error', fail);
 archive.on('error', fail);
 archive.on('progress', (d) => {
-  if (!settled) parentPort.postMessage({ type: 'progress', processedBytes: d.fs.processedBytes });
+  if (!settled) parentPort?.postMessage({ type: 'progress', processedBytes: d.fs.processedBytes });
 });
 
 archive.pipe(output);

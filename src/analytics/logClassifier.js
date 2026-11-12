@@ -124,6 +124,8 @@ const DEATH_TRIE = buildDeathTrie(DEATH_PLAIN_VERBS, DEATH_BY_VERBS);
  * verb trie. Returns { kind: 'plain' } when any plain verb matches at a word
  * boundary, { kind: 'by', len } when a killer verb does (len = verb length to
  * slice the killer token from), or null on no match.
+ * @param {string} rest
+ * @returns {{ kind: 'plain' } | { kind: 'by', len: number } | null}
  */
 function matchDeathTail(rest) {
   let node = DEATH_TRIE;
@@ -209,6 +211,7 @@ function classify(line) {
     .replace(/§[0-9a-fk-or]/gi, '')
     .trim();
 
+  /** @type {string | null} */
   let time = null;
   const prefix = text.match(PREFIX_RE);
   if (prefix) {

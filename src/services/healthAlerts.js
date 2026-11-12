@@ -62,6 +62,7 @@ function safeParse(json) {
 function reportNear(serverId, createdAt) {
   const eventMs = Date.parse(`${createdAt.replace(' ', 'T')}Z`);
   if (Number.isNaN(eventMs)) return null;
+  /** @type {any} */
   let best = null;
   let bestGap = REPORT_MATCH_MS;
   for (const r of db.all(

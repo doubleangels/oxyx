@@ -29,7 +29,7 @@ function pickJavaTag(mcVersion, type = 'VANILLA', { maxJavaVersion = null } = {}
   // Unknown cap (no pin yet, or the index was unreachable) → java17, which every
   // version in the GTNH index supports.
   if (type === 'GTNH') {
-    const cap = Number.isInteger(maxJavaVersion) ? maxJavaVersion : 17;
+    const cap = typeof maxJavaVersion === 'number' && Number.isInteger(maxJavaVersion) ? maxJavaVersion : 17;
     if (cap < 17) return 'java8';
     return (GTNH_JAVA_LADDER.find((step) => cap >= step.min) || { tag: 'java17' }).tag;
   }

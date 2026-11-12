@@ -10,9 +10,9 @@ const { dataPath } = require('../../../storage/pathGuard');
 // Valid server TYPE values, derived from the field catalog so this stays in sync
 // with the wizard. An unknown type would create a container that only fails later
 // at start with no useful feedback.
-const SERVER_TYPES = require('../../../config/field-catalog/general')
-  .find((f) => f.key === 'TYPE')
-  .options.map((o) => o.value);
+const SERVER_TYPES = /** @type {any} */ (
+  require('../../../config/field-catalog/general').find((f) => f.key === 'TYPE')
+).options.map((o) => o.value);
 
 /** Load a server row or throw a JSON-friendly 404. */
 function requireServer(id) {

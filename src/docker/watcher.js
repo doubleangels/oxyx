@@ -27,7 +27,9 @@ const STOP_REQUESTED_WINDOW_MINUTES = 10;
 // not grow the buffer without bound - drop the oldest bytes once past the cap.
 const MAX_EVENT_BUFFER_BYTES = 64 * 1024;
 
+/** @type {NodeJS.ReadableStream | null} */
 let stream = null;
+/** @type {NodeJS.Timeout | null} */
 let retryTimer = null;
 let retryDelayMs = 5000;
 

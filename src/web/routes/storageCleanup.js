@@ -38,6 +38,8 @@ async function entrySize(abs) {
  * Run (or preview, with dryRun) one cleanup action.
  * Actions: 'tmp' | 'orphans' | 'old-logs' | 'old-crashes'.
  * Returns { freedBytes, removed }.
+ * @param {string} action
+ * @param {{ olderThanDays?: number, dryRun?: boolean, actor?: string }} [opts]
  */
 async function runCleanup(action, { olderThanDays, dryRun = false, actor = 'system' } = {}) {
   const days = olderThanDays || DEFAULT_DAYS;

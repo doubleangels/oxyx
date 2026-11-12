@@ -86,6 +86,7 @@ async function handleConsole(ws, serverId, user, sid) {
   const send = (obj) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
   };
+  /** @type {(() => void) | null} */
   let unsubscribe = null;
   let closed = false;
   const cleanup = () => {
@@ -250,6 +251,7 @@ function subscribeConsole(serverId, sub) {
         // buffer is filled immediately; flush() runs before anything that must
         // not reorder against pending text (a late joiner, end, error).
         let pending = '';
+        /** @type {NodeJS.Timeout | null} */
         let flushTimer = null;
         broker.flush = () => {
           if (flushTimer) clearTimeout(flushTimer);
@@ -381,6 +383,7 @@ function subscribeStats(serverId, onSample, onError, onEnd = () => {}) {
 }
 
 async function handleStats(ws, serverId) {
+  /** @type {(() => void) | null} */
   let unsubscribe = null;
   let closed = false;
   const cleanup = () => {

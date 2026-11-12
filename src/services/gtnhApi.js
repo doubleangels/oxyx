@@ -129,7 +129,7 @@ async function listVersions({ includeBeta = false } = {}) {
 
 /** One version by exact key. Unknown keys are a 404 - never passed to container env. */
 async function getVersion(version) {
-  const entry = (await fetchIndex()).find((e) => e.version === version);
+  const entry = ((await fetchIndex()) || []).find((e) => e.version === version);
   if (!entry) throw httpError(404, `Unknown GTNH pack version: ${version}`);
   return entry;
 }

@@ -440,6 +440,12 @@ async function setOp(serverId, name, on, level = 4, { running = false, actor = '
 // ---------------------------------------------------------------------------
 // Bans
 
+/**
+ * @param {string} serverId
+ * @param {string} name
+ * @param {string | undefined} reason
+ * @param {{ running?: boolean, actor?: string, durationMs?: number | null }} [opts]
+ */
 async function banPlayer(serverId, name, reason, { running = false, actor = 'system', durationMs = null } = {}) {
   const who = await resolveIdentity(serverId, name);
   reason = cleanText(reason, 'Banned by an operator.');
@@ -489,6 +495,12 @@ async function pardonPlayer(serverId, name, { running = false, actor = 'system' 
   return { name: who.name, uuid: who.uuid, banned: false };
 }
 
+/**
+ * @param {string} serverId
+ * @param {string} ip
+ * @param {string | undefined} reason
+ * @param {{ running?: boolean, actor?: string, durationMs?: number | null, player?: string | null }} [opts]
+ */
 async function banIp(
   serverId,
   ip,

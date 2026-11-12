@@ -212,6 +212,10 @@ async function restartRunningServers({ actor, task, warnSeconds = 0 }) {
   await forEachServer('Restarting', still, (server) => servers.restartServer(server.id, { actor }), task);
 }
 
+/**
+ * @param {any} schedule
+ * @param {any} [task]
+ */
 async function runTask(schedule, task = null) {
   const payload = JSON.parse(schedule.payload_json || '{}');
   const actor = 'scheduler';
@@ -402,6 +406,10 @@ function seedGlobalDefaults() {
   }
 }
 
+/**
+ * @param {{ serverId?: string | null, taskType: string, cron: string, payload?: object, enabled?: boolean }} schedule
+ * @param {{ actor?: string }} [opts]
+ */
 function createSchedule({ serverId = null, taskType, cron, payload = {}, enabled = true }, { actor = 'system' } = {}) {
   if (!TASK_TYPES[taskType]) throw httpError(400, `Unknown task type ${taskType}.`);
   try {
@@ -470,7 +478,9 @@ function listSchedules() {
       serverNames.set(r.id, r.display_name);
   }
   return rows.map((s) => {
+    /** @type {string | null} */
     let next = null;
+    /** @type {number | null} */
     let nextMs = null;
     try {
       const nextRun = new Cron(s.cron, { timezone: getTimezone() }).nextRun();

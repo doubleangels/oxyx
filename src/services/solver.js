@@ -47,7 +47,7 @@ function buildLoaderMap(versions) {
       for (const gv of v.game_versions || []) {
         // Plain release versions only - parseVersion() matches prefixes, so
         // also reject snapshots/RCs like "26.2-rc-1" or "1.21.2-pre1".
-        if (/^\d+\.\d+(\.\d+)?$/.test(gv) && parseVersion(gv)) map.get(loader.id).add(gv);
+        if (/^\d+\.\d+(\.\d+)?$/.test(gv) && parseVersion(gv)) map.get(loader.id)?.add(gv);
       }
     }
   }
@@ -56,12 +56,16 @@ function buildLoaderMap(versions) {
 
 function pairMeta(loaderId, mcVersion) {
   const loader = LOADERS.find((l) => l.id === loaderId);
-  return { loader: loaderId, loaderLabel: loader.label, type: loader.type, mcVersion };
+  // loaderId always comes from LOADERS.
+  const { label, type } = /** @type {(typeof LOADERS)[number]} */ (loader);
+  return { loader: loaderId, loaderLabel: label, type, mcVersion };
 }
 
 /** Newest-first, then loader preference. */
 function comparePairs(a, b) {
-  return compareMcDesc(a.mcVersion, b.mcVersion) || LOADER_RANK.get(a.loader) - LOADER_RANK.get(b.loader);
+  return (
+    compareMcDesc(a.mcVersion, b.mcVersion) || Number(LOADER_RANK.get(a.loader)) - Number(LOADER_RANK.get(b.loader))
+  );
 }
 
 /** loader id → Set of MC versions, from a CurseForge project's file list. */
@@ -80,7 +84,7 @@ function buildLoaderMapCf(files, classId) {
     const buckets = isPlugin
       ? ['paper']
       : LOADERS.filter((l) => l.id !== 'paper' && loaders.includes(l.id)).map((l) => l.id);
-    for (const b of buckets) for (const gv of mcVersions) map.get(b).add(gv);
+    for (const b of buckets) for (const gv of mcVersions) map.get(b)?.add(gv);
   }
   return map;
 }
@@ -181,8 +185,10 @@ async function solve(projectRefs) {
 
   // Partial fallback: the (loader, MC version) pair supported by the MOST
   // projects, with the same newest-first/loader-preference tiebreaks.
+  /** @type {any} */
   let partial = null;
   if (!best) {
+    /** @type {any} */
     let bestPartial = null;
     for (const loader of LOADERS) {
       const union = new Set();

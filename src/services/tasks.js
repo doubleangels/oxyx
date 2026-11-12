@@ -32,10 +32,12 @@ function createTask(title, { serverId = null, actor = 'system' } = {}) {
     stepLabel: 'Starting…',
     current: 0,
     total: 0,
+    /** @type {string[]} */
     logs: [],
     result: null,
     error: null,
     startedAt: Date.now(),
+    /** @type {number | null} */
     finishedAt: null,
   };
   tasks.set(id, task);

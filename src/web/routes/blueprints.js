@@ -232,7 +232,7 @@ router.post(
       throw err;
     }
     const { server, report } = result;
-    if (input.uploadToken) await fsp.rm(zipRef, { force: true }).catch(onTempCleanupFailed);
+    if (input.uploadToken && zipRef) await fsp.rm(zipRef, { force: true }).catch(onTempCleanupFailed);
     res.status(201).json({ ok: true, server: publicServer(server), report });
   })
 );

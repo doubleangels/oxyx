@@ -243,7 +243,7 @@ function pinnedRequest(u, address, options = {}) {
       (res) => {
         resolve({
           status: res.statusCode,
-          ok: res.statusCode >= 200 && res.statusCode < 300,
+          ok: (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300,
           headers: { get: (name) => res.headers[String(name).toLowerCase()] ?? null },
           body: Readable.toWeb(res),
         });

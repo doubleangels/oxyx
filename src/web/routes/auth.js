@@ -136,7 +136,9 @@ router.post(
           ? res.status(403).json({ ok: false, error: msg })
           : res.status(403).render('setup', { title: 'Welcome', layout: 'bare', needsPin: true, error: msg });
       }
-      const user = await authService.createUser({ username, password, role: 'admin' }, { actor: 'setup' });
+      const user = /** @type {NonNullable<Awaited<ReturnType<typeof authService.createUser>>>} */ (
+        await authService.createUser({ username, password, role: 'admin' }, { actor: 'setup' })
+      );
       // Rotate the session id on privilege establishment (anti-fixation), matching login.
       req.session.regenerate((err) => {
         if (err) {

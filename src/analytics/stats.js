@@ -35,6 +35,7 @@ const METRICS = new Set([
   'blocksUsedTotal',
 ]);
 
+/** @type {NodeJS.Timeout | null} */
 let timer = null;
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -438,7 +439,7 @@ function computeScoreboard(serverId, metric, window) {
     const stats = JSON.parse(latest.stats_json);
     let value = num(stats[metric]);
     if (cutoff) {
-      const base = baseMap.get(uuid);
+      const base = baseMap && baseMap.get(uuid);
       value = Math.max(0, value - num(base ? JSON.parse(base.stats_json)[metric] : 0));
     }
     rows.push({ uuid, name: latest.name || uuid.slice(0, 8), value });

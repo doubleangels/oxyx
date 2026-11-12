@@ -464,14 +464,16 @@ function sanitizeArg(value) {
   return ARG_RE.test(v) ? v : '';
 }
 
+/** @param {string | null | undefined} id */
 function pretty(id) {
-  const base = String(id || '')
-    .replace(/^#/, '')
-    .split(':')
-    .pop()
-    .split('/')
-    .pop()
-    .replace(/_/g, ' ');
+  // split() always returns at least one element, so pop() is never undefined.
+  const afterNs = /** @type {string} */ (
+    String(id || '')
+      .replace(/^#/, '')
+      .split(':')
+      .pop()
+  );
+  const base = /** @type {string} */ (afterNs.split('/').pop()).replace(/_/g, ' ');
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 

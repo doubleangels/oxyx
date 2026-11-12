@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Backups and backup retention.
@@ -102,6 +101,7 @@ router.patch(
         note: z.string().trim().max(200, 'Keep the note under 200 characters.').optional(),
       })
       .parse(req.body);
+    /** @type {any} */
     let updated = null;
     if (filename !== undefined) {
       updated = await backups.renameBackup(req.params.backupId, filename, { actor: req.user.username });

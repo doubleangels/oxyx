@@ -86,7 +86,9 @@ allocation, disk quotas, at-rest secret encryption), and wire formats are all de
 4. **Server code is plain CommonJS JS — no TypeScript compile step.** Type safety is JSDoc + a
    `tsc --checkJs` gate. `types/globals.d.ts` holds ambient augmentations; dynamic-interop files
    (Docker/NBT/HTTP-JSON) carry a `// @ts-nocheck` header while typing is grown incrementally. New
-   modules are checked by default — keep them clean.
+   modules are checked by default — keep them clean. `strictNullChecks` is on, and
+   `test/ts-nocheck-baseline.test.js` fails if the `@ts-nocheck` count rises (lower its baseline
+   when you clear one).
 5. **Browser JS (`public/js/`) is hand-written ESM progressive enhancement** — no framework, no SPA.
    esbuild bundles it to `public/dist/js/` for production; the app serves that when present and raw
    source otherwise, so a dev run without a build still works. `public/vendor/chart.umd.js` is a

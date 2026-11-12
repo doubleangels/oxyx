@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Server orchestration: CRUD, env assembly, container lifecycle. The single
@@ -73,7 +72,9 @@ function getServer(id) {
 /** The host uid/gid the panel process runs as, or null where it doesn't apply
  *  (Windows / macOS Docker Desktop don't have this bind-mount ownership problem). */
 function panelUidGid() {
-  if (process.platform === 'win32' || typeof process.getuid !== 'function') return null;
+  if (process.platform === 'win32' || typeof process.getuid !== 'function' || typeof process.getgid !== 'function') {
+    return null;
+  }
   return { uid: process.getuid(), gid: process.getgid() };
 }
 
@@ -171,6 +172,8 @@ function assembleEnv(server) {
  * `applyPack` schedules moments later. It's never used once a pin exists, and
  * it never overrides an explicit `server.java_tag` (that column means "the user
  * overrode auto" and must keep winning).
+ * @param {any} server
+ * @param {{ javaTagHint?: string }} [opts]
  */
 function resolveImage(server, { javaTagHint } = {}) {
   // GTNH's Java support is a property of the pinned pack version, not of the
@@ -273,6 +276,11 @@ function previewServerSpec(id) {
 // port change never waits on someone else's slow create.
 let portChain = Promise.resolve();
 
+/**
+ * @template T
+ * @param {() => T | Promise<T>} run
+ * @returns {Promise<T>}
+ */
 function withPortLock(run) {
   const result = portChain.then(run, run);
   portChain = result.then(
@@ -291,6 +299,8 @@ function createServer(input, opts = {}) {
  * opts.start. onProgress(status) receives human-readable progress strings.
  * On any failure before the container exists, the half-created row + data dirs
  * are rolled back so no ghost server holds ports.
+ * @param {any} input
+ * @param {{ actor?: string, start?: boolean, onProgress?: (status: string) => void, javaTagHint?: string }} [opts]
  */
 async function createServerImpl(input, { actor = 'system', start = false, onProgress = () => {}, javaTagHint } = {}) {
   // Fail fast instead of shipping a crash-looping container: anything
@@ -632,7 +642,7 @@ async function recreateServerImpl(id, { actor = 'system', quiet = false } = {}) 
 /**
  * Build (not start) a server's container from its row, bound to `ports`, and
  * record its id. The one place a container spec is assembled for a rebuild.
- * @param {object} server a server row (getServer)
+ * @param {any} server a server row (getServer)
  * @param {{ game: number, rcon: number }} ports host game + RCON ports
  */
 async function buildContainer(server, ports) {
@@ -1492,6 +1502,10 @@ function writeServerProperties(serverId, content, { actor = 'system' } = {}) {
  * knows the file was just rewritten behind the panel's back (Minecraft saves
  * server.properties itself on `whitelist on/off`) passes the snapshot it took
  * beforehand, so the panel's own edits survive and only `key` changes.
+ * @param {string} serverId
+ * @param {string} key
+ * @param {string} value
+ * @param {{ actor?: string, baseText?: string }} [opts]
  * @returns {{ rebuildNeeded: boolean, unlocked: string[] }}
  */
 function setServerProperty(serverId, key, value, { actor = 'system', baseText } = {}) {

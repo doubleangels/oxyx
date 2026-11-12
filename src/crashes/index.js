@@ -288,6 +288,7 @@ async function scanAll() {
   }
 }
 
+/** @type {NodeJS.Timeout | null} */
 let watcherTimer = null;
 
 /** Start the background watcher (immediate scan + interval). Returns stop(). */

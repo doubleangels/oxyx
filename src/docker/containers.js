@@ -34,6 +34,7 @@ function containerName(serverId) {
  * @param {object} spec.resources        { memoryMb, swapMb, cpus }
  * @param {string} [spec.containerName]  Docker container name override; default `msm-<serverId>`
  * @param {string} [spec.networkName]    host Docker network to attach to; created if it does not exist; default bridge
+ * @param {Array}  [spec.extraPorts]     [{container: '8100/tcp', host, internal?}] feature + admin extra ports
  * @param {Array}  [spec.extraBinds]     [{hostPath, containerPath, mode: 'rw'|'ro'}] - RAW host paths, not re-rooted
  *
  * RCON and any extra port marked `internal: true` (BlueMap) are published on

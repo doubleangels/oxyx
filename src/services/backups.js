@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Backups: consistent snapshots of a server dir into ./data/backups/<id>/,
@@ -32,6 +31,10 @@ const { serializeError } = require('../utils/logSanitize');
 // backups a user deliberately created and kept (reason 'manual').
 const backupRetention = require('./backupRetention');
 
+/**
+ * @param {string} serverId
+ * @param {{ reason?: string, actor?: string, note?: string, task?: any, shrinkAfter?: boolean, shrinkMinTicks?: number }} [opts]
+ */
 async function createBackupImpl(
   serverId,
   { reason = 'manual', actor = 'system', note = '', task = null, shrinkAfter = false, shrinkMinTicks } = {}
@@ -46,7 +49,7 @@ async function createBackupImpl(
     throw httpError(507, `Not enough disk space for a backup (~${(needed / 1024 ** 3).toFixed(1)} GB needed).`);
   }
 
-  const info = await inspectStatus(serverId).catch(() => ({ exists: false }));
+  const info = await inspectStatus(serverId).catch(() => ({ exists: false, status: null }));
   const running = info.exists && ['running', 'starting', 'unhealthy'].includes(info.status);
 
   // Seconds-resolution stamp + a nanoid suffix: two backups in the same minute
@@ -225,6 +228,9 @@ async function createBackupImpl(
  * dir first: if extraction fails or the process crashes mid-extraction, the
  * original world is untouched, and the only at-risk window is the two rename
  * syscalls themselves (near-instant, not proportional to world size).
+ * @param {string} serverId
+ * @param {string} backupId
+ * @param {{ actor?: string, skipSafety?: boolean, task?: any }} [opts]
  */
 async function restoreBackupCore(serverId, backupId, { actor = 'system', skipSafety = false, task = null } = {}) {
   const backup = db.get('SELECT * FROM backups WHERE id = ? AND server_id = ?', backupId, serverId);
@@ -255,7 +261,7 @@ async function restoreBackupCore(serverId, backupId, { actor = 'system', skipSaf
   const { stopServerUnguarded } = require('./servers');
   await stopServerUnguarded(serverId, { actor }).catch(() => {});
   // NEVER rm -rf under a live container: verify the container really stopped.
-  const info = await inspectStatus(serverId).catch(() => ({ exists: false }));
+  const info = await inspectStatus(serverId).catch(() => ({ exists: false, status: null }));
   if (info.exists && ['running', 'starting', 'unhealthy'].includes(info.status)) {
     throw httpError(
       409,
@@ -571,6 +577,8 @@ function planPrune(serverId, cfg) {
  * failed" (misleading the operator) or silently abort retention entirely
  * (letting old backups accumulate and eventually cause a REAL failure via
  * the free-space preflight).
+ * @param {string} serverId
+ * @param {{ actor?: string, onlyIds?: Set<string> | null }} [opts]
  */
 async function pruneRetention(serverId, { actor = 'system', onlyIds = null } = {}) {
   let deleted = 0;
@@ -686,6 +694,11 @@ async function applyRetention(serverIds, { actor = 'system', onlyIds = null } = 
 // Compression runs in a worker thread (src/services/backupZipWorker.js) so the
 // deflate CPU + archiver framing for a multi-GB world don't stall every other
 // request. The worker deletes its own half-written .zip on failure.
+/**
+ * @param {string} sourceDir
+ * @param {string} outFile
+ * @param {{ onProgress?: ((processedBytes: number) => void) | null }} [opts]
+ */
 function zipDirectory(sourceDir, outFile, { onProgress = null } = {}) {
   /** @type {Promise<void>} */
   const p = new Promise((resolve, reject) => {
@@ -761,7 +774,9 @@ function zipEntryCount(zipFile) {
 
 /** Fully read every entry of a zip and check its CRC-32 - the same bytes a
  *  restore would extract, without writing anything. Resolves { entries, bytes };
- *  rejects on the first unreadable or corrupt entry. */
+ *  rejects on the first unreadable or corrupt entry. * @param {string} zipFile
+ * @param {((bytes: number) => void) | null} [onBytes]
+ */
 function zipVerify(zipFile, onBytes = null) {
   return new Promise((resolve, reject) => {
     yauzl.open(zipFile, { lazyEntries: true }, (err, zip) => {
@@ -797,6 +812,8 @@ function zipVerify(zipFile, onBytes = null) {
  * Dry-run restore: prove a backup's archive can be read end to end. Read-only
  * (no extraction, no server stop), so it is safe on a running server.
  * ponytail: CRC check only, not a file-by-file diff against the live world.
+ * @param {string} backupId
+ * @param {{ actor?: string, task?: any }} [opts]
  */
 async function verifyBackupImpl(backupId, { actor = 'system', task = null } = {}) {
   const backup = db.get('SELECT * FROM backups WHERE id = ?', backupId);
