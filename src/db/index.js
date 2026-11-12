@@ -22,6 +22,10 @@ function open() {
   if (db) return db;
   db = new DatabaseSync(path.join(config.dataDir, 'panel.db'));
   db.exec('PRAGMA journal_mode = WAL');
+  // NORMAL is the recommended pairing with WAL: commits no longer fsync each
+  // time (only checkpoints do), and the database stays consistent after a
+  // crash. At worst the last few commits before a power loss are rolled back.
+  db.exec('PRAGMA synchronous = NORMAL');
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA busy_timeout = 5000');
   logger.debug('Opened the panel database.');

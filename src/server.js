@@ -233,6 +233,14 @@ function startBackgroundServices(httpServer) {
     } catch (err) {
       logger.error('Pruning event history or API cache failed.', { err: serializeError(err) });
     }
+    // Refresh the query planner's statistics where they have drifted. Cheap,
+    // and a no-op when nothing changed enough to matter.
+    try {
+      require('./db').exec('PRAGMA optimize');
+    } catch (err) {
+      logger.warn('The SQLite optimize pass failed.', { err: serializeError(err, { includeStack: false }) });
+    }
+
     // Snapshot the panel DB itself - the server backups only cover per-server
     // world dirs, so without this the users/schedules/pins/history/2FA store has
     // no backup at all. VACUUM INTO is a safe hot copy; keep the newest N.
