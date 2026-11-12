@@ -18,7 +18,7 @@ its own dated entry.
 - **The panel shuts down cleanly.** On `SIGTERM` or `SIGINT` (such as `docker stop`) it stops taking
   new connections, closes live console views, lets running requests finish for up to eight seconds,
   and closes the database with its write-ahead log folded back in. Before, Docker waited out its
-  timeout and killed it. The compose file now sets `init: true` and a 20 second stop grace period.
+  timeout and killed it. The compose file sets a 20 second stop grace period.
 - **Database migrations are numbered without gaps and run more safely.** The migrations are now
   numbered 001 to 033 with no holes. Installs that already applied the old numbers are recognised
   and nothing re-runs. Each migration is checked before it commits: one that leaves a broken
@@ -48,6 +48,12 @@ its own dated entry.
   restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
   nothing supervises the process. Unhandled promise rejections are still logged without exiting.
 
+- **The image is built for 64-bit x86 Linux only, on a minimal base.** Published images are
+  `linux/amd64`; arm64 is no longer built, and the installer says so on other machines. The runtime
+  is bare Alpine 3.24 with only the Node 24.22.3 binary, its C++ runtime and tini, both pinned by
+  digest: no npm, yarn, corepack or pnpm. tini runs as PID 1, so the compose file no longer sets
+  `init: true`. The build context is an allowlist, so nothing outside the app's inputs reaches the
+  image. Releases now carry a build SBOM.
 - **A much smaller image.** The Docker build drops data the panel never reads from its dependencies
   (Minecraft Bedrock tables and icon fonts), cutting the bundled packages from about 530 MB to 170 MB.
 - **The compose file pins the image to a release.** `docker-compose.yml` now uses

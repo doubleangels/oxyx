@@ -1,20 +1,25 @@
-# Keep the build context to what the image build actually reads: package files,
-# src/, views/, public/, assets/, scripts/ (Tailwind scans these for classes).
-.git
-.github
-node_modules
-data
-docs
+# Allowlist: the build context is exactly what the Dockerfile reads. Everything
+# is excluded, then the inputs are named one by one, so a new file in the repo
+# (docs, tests, local data, secrets) never slips into the context or the image.
+*
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!src/
+!views/
+!public/
+!assets/
+!scripts/postinstall.js
+!scripts/build-js.js
+!scripts/prune-prod-deps.js
+
+# Build outputs are produced inside the image, never copied in from a dev tree.
 public/dist
-test
-types
-.env
-*.log
-pnpm-debug.log*
-.eslintcache
-.prettiercache
-.vscode
-.idea
-Dockerfile
-docker-compose.yml
-.codegraph/
+public/css/app.css
+
+# Editor and OS clutter that can sit inside the allowed folders.
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*~

@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/doubleangels/oxyx/releases/latest"><img src="https://img.shields.io/github/v/release/doubleangels/oxyx?logo=github" alt="GitHub release"></a>
   <a href="https://github.com/doubleangels/oxyx/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/doubleangels/oxyx/ci.yml?logo=github&label=ci" alt="CI"></a>
-  <a href="https://github.com/doubleangels/oxyx/pkgs/container/oxyx"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
+  <a href="https://github.com/doubleangels/oxyx/pkgs/container/oxyx"><img src="https://img.shields.io/badge/ghcr.io-linux%2Famd64-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=nodedotjs&logoColor=white" alt="Node 24+">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/doubleangels/oxyx" alt="MIT license"></a>
 </p>
@@ -67,7 +67,7 @@ by host path).
 
 ### 🐳 Option 1: Docker (Linux hosts, Portainer, Dockge, compose)
 
-A pre-built multi-arch image (amd64 + arm64) is published to GHCR on every release:
+A pre-built image for 64-bit x86 Linux (`linux/amd64`) is published to GHCR on every release:
 `ghcr.io/doubleangels/oxyx:latest` (or pin a version tag, e.g. `:v0.14.1`).
 The shipped `docker-compose.yml` pins the current release; set `OXYX_TAG` to upgrade (or to `latest`
 to follow every release). To keep the raw Docker socket out of the panel container, use

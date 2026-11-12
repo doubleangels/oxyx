@@ -36,7 +36,6 @@ services:
     image: ghcr.io/doubleangels/oxyx:${OXYX_TAG:-v0.14.1}
     container_name: oxyx
     restart: unless-stopped
-    init: true
     stop_grace_period: 20s
     depends_on:
       - socket-proxy
