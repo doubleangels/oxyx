@@ -20,6 +20,9 @@ its own dated entry.
   tags or ports could not be read used to turn the whole panel into an error page, because the
   sidebar reads every server. The damaged value is now treated as empty and logged once, and the
   server's page says which settings to review and save.
+- **Blueprint uploads check free disk space first** and refuse an archive over 8 GB before it is
+  stored, like world and file uploads. A previewed upload that is never imported is deleted after
+  30 minutes instead of waiting for the nightly cleanup.
 
 ### Changed
 

@@ -178,3 +178,43 @@ test('imported env goes through the same checks as the wizard (F-31)', async () 
   // The panel's env denylist (SERVER_PORT, LOAD_ENV_FROM_FILE, …) runs in assembleEnv for every
   // server, blueprint or not; servers-core.test.js covers it.
 });
+
+test('blueprint uploads: a previewed file expires, and an oversized upload is refused up front (F-32)', async () => {
+  const { scheduleUploadExpiry } = require('../src/web/routes/blueprints');
+  const tmp = dataPath('tmp', 'bpup-expiretest.mcserver.zip');
+  fs.mkdirSync(path.dirname(tmp), { recursive: true });
+  fs.writeFileSync(tmp, 'x');
+  scheduleUploadExpiry('bpup-expiretest.mcserver.zip', tmp, 20);
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(fs.existsSync(tmp), false);
+
+  const login = await app.req('POST', '/login', { body: { username: 'admin', password: 'supersecret123' } });
+  const cookie = login.setCookie.map((c) => c.split(';')[0]).join('; ');
+  // A raw request: declare 9 GB and send nothing. The preflight answers on the
+  // headers alone, before multer reads a byte.
+  const base = new URL(await app.start());
+  const status = await new Promise((resolve, reject) => {
+    const req = require('node:http').request(
+      {
+        host: base.hostname,
+        port: base.port,
+        method: 'POST',
+        path: '/api/blueprints/import-preview',
+        headers: {
+          Cookie: cookie,
+          Accept: 'application/json',
+          'Content-Type': 'multipart/form-data; boundary=x',
+          'Content-Length': String(9 * 1024 ** 3),
+        },
+      },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode);
+        req.destroy();
+      }
+    );
+    req.on('error', (err) => (err.code === 'ECONNRESET' ? null : reject(err)));
+    req.flushHeaders();
+  });
+  assert.equal(status, 413);
+});
