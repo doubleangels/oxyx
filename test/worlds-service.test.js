@@ -246,3 +246,28 @@ test('importArchive handles zip and tar.gz, and rejects junk', async () => {
   await tar.c({ file: empty, cwd: src }, ['x']);
   await assert.rejects(worlds.importArchive(empty, { originalName: 'empty.tar' }), /No level\.dat/);
 });
+
+test('extractArchive drops symlink and hardlink entries from a tar (F-03)', async () => {
+  const src = dataPath('tmp', 'f03-src');
+  fs.rmSync(src, { recursive: true, force: true });
+  fs.mkdirSync(path.join(src, 'world'), { recursive: true });
+  fs.writeFileSync(path.join(src, 'world', 'level.dat'), 'data');
+  fs.symlinkSync('/etc/passwd', path.join(src, 'world', 'sym'));
+  fs.writeFileSync(path.join(src, 'orig.dat'), 'orig');
+  fs.linkSync(path.join(src, 'orig.dat'), path.join(src, 'world', 'hard'));
+  const tarFile = dataPath('tmp', 'f03.tar');
+  // node-tar records the second name of an inode as a hardlink ('Link') entry.
+  await tar.c({ file: tarFile, cwd: src, portable: false }, ['orig.dat', 'world']);
+  const types = [];
+  await tar.t({ file: tarFile, onReadEntry: (e) => types.push(e.type) });
+  assert.ok(types.includes('SymbolicLink') && types.includes('Link'), `fixture has both link types: ${types}`);
+
+  const dest = dataPath('tmp', 'f03-out');
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  await worlds.extractArchive(tarFile, dest, 'f03.tar');
+  assert.equal(fs.readFileSync(path.join(dest, 'world', 'level.dat'), 'utf8'), 'data');
+  assert.equal(fs.existsSync(path.join(dest, 'world', 'sym')), false);
+  assert.throws(() => fs.lstatSync(path.join(dest, 'world', 'sym')), { code: 'ENOENT' });
+  assert.equal(fs.existsSync(path.join(dest, 'world', 'hard')), false);
+});

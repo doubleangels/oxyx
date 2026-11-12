@@ -32,6 +32,8 @@ its own dated entry.
   outside. Set `INTERNAL_PORT_BIND=all` to keep the old behaviour. Existing servers are marked for a
   rebuild, which happens on their next start. Server containers also run with
   `no-new-privileges` and a process limit (`CONTAINER_PIDS_LIMIT`, default 4096).
+- **World archives in tar format no longer extract links.** Symbolic links and hard links inside an
+  uploaded `.tar` or `.tar.gz` world are skipped. Only regular files and folders are written.
 
 ## [0.14.1] - 2026-09-21
 

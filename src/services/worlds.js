@@ -1177,6 +1177,10 @@ function zipWorld(outFile, rootAbs, dimDirs = []) {
   });
 }
 
+// node-tar entry types that are plain data. 'OldFile' and 'ContiguousFile' are
+// legacy spellings of a regular file.
+const TAR_KEEP_TYPES = new Set(['File', 'OldFile', 'ContiguousFile', 'Directory']);
+
 /** Route an archive to the right extractor by magic bytes (zip/.mcworld, tar, tar.gz). */
 async function extractArchive(file, destDir, originalName = '') {
   const fd = await fsp.open(file, 'r');
@@ -1215,10 +1219,13 @@ async function extractArchive(file, destDir, originalName = '') {
     }
     // node-tar sanitizes absolute paths and skips `..` entries by default;
     // this filter is defense in depth and only returns a boolean, never throws.
+    // Only regular files and folders are extracted: a symlink or hardlink in a
+    // world archive (world/x -> /data/.secret-key) would otherwise sit in the
+    // server folder for every later copy, backup and download to trip over.
     return tar.x({
       file,
       cwd: destDir,
-      filter: (p) => !p.split(/[\\/]/).includes('..'),
+      filter: (p, entry) => TAR_KEEP_TYPES.has(entry && entry.type) && !p.split(/[\\/]/).includes('..'),
     });
   }
   throw httpError(400, `That doesn't look like a zip or tar archive${originalName ? ` (${originalName})` : ''}.`);
@@ -1379,4 +1386,5 @@ module.exports = {
   serverWorldDims,
   compatWarnings,
   readLevelVersion,
+  extractArchive,
 };
