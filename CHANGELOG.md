@@ -16,6 +16,9 @@ its own dated entry.
   new connections, closes live console views, lets running requests finish for up to eight seconds,
   and closes the database with its write-ahead log folded back in. Before, Docker waited out its
   timeout and killed it. The compose file now sets `init: true` and a 20 second stop grace period.
+- **Upgrades copy the database before changing its schema.** When a new version has database
+  migrations to apply, the panel first saves `backups/_panel/pre-migrate-v<version>-<time>.db`
+  (the newest five are kept), so a bad migration can be rolled back to the moment before it ran.
 - **One damaged database value no longer takes every page down.** A server whose stored settings,
   tags or ports could not be read used to turn the whole panel into an error page, because the
   sidebar reads every server. The damaged value is now treated as empty and logged once, and the

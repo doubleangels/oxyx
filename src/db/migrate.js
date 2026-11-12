@@ -37,12 +37,51 @@ const LEGACY_MIGRATION_ALIASES = {
   '024_update_check_ignore': ['017_update_check_ignore'],
 };
 
+const PRE_MIGRATE_KEEP = 5;
+
+/**
+ * Copy the database aside before an upgrade changes its schema, so a bad
+ * migration leaves more than yesterday's daily snapshot to go back to.
+ * VACUUM INTO writes a consistent, checkpointed copy. It blocks, but this runs
+ * once at boot before the panel listens. Kept apart from the daily
+ * `panel-*.db` snapshots (their own prefix and pruning), newest few only.
+ * @returns {string | null} the snapshot path, or null when it could not be made
+ */
+function snapshotBeforeMigrating(pending) {
+  try {
+    const { dataPath } = require('../storage/pathGuard');
+    const { version } = require('../../package.json');
+    const dir = dataPath('backups', '_panel');
+    fs.mkdirSync(dir, { recursive: true });
+    // Milliseconds too: VACUUM INTO refuses to overwrite, and two boots (or
+    // tests) can land in the same second.
+    const stamp = new Date().toISOString().replace(/[:T.]/g, '-').slice(0, 23);
+    const file = path.join(dir, `pre-migrate-v${version}-${stamp}.db`);
+    db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+    logger.info('Snapshotted the panel database before applying migrations.', {
+      pending,
+      dir: 'data/backups/_panel',
+    });
+    const old = fs
+      .readdirSync(dir)
+      .filter((f) => /^pre-migrate-.*\.db$/.test(f))
+      .sort();
+    for (const f of old.slice(0, Math.max(0, old.length - PRE_MIGRATE_KEEP)))
+      fs.rmSync(path.join(dir, f), { force: true });
+    return file;
+  } catch (err) {
+    // A failed copy must not stop the upgrade: the daily snapshots still exist.
+    logger.warn('Could not snapshot the panel database before migrating.', { err: err && err.message });
+    return null;
+  }
+}
+
 /**
  * Apply every migration not yet recorded. `dir` exists so a test can point the
  * runner at a throwaway folder instead of touching the real migrations.
- * @param {{ dir?: string }} [opts]
+ * @param {{ dir?: string, snapshot?: boolean }} [opts] `snapshot: false` skips the pre-migration copy
  */
-function migrate({ dir = MIGRATIONS_DIR } = {}) {
+function migrate({ dir = MIGRATIONS_DIR, snapshot = true } = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     version TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -68,6 +107,15 @@ function migrate({ dir = MIGRATIONS_DIR } = {}) {
     }
     seenNumbers.set(prefix, file);
   }
+
+  // An existing database about to change shape gets a copy first. A fresh
+  // install (nothing applied yet) has nothing worth keeping.
+  const pending = files.filter((f) => {
+    const v = f.replace(/\.js$/, '');
+    const legacy = LEGACY_MIGRATION_ALIASES[v];
+    return !applied.has(v) && !(legacy && legacy.some((old) => applied.has(old)));
+  });
+  if (applied.size > 0 && pending.length > 0 && snapshot) snapshotBeforeMigrating(pending.length);
 
   let count = 0;
   for (const file of files) {

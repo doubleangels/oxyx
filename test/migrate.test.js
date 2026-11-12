@@ -9,9 +9,14 @@ const path = require('node:path');
 const { migrate } = require('../src/db/migrate');
 const db = require('../src/db');
 
+const snapDir = () => require('../src/storage/pathGuard').dataPath('backups', '_panel');
+const preMigrateSnaps = () =>
+  fs.existsSync(snapDir()) ? fs.readdirSync(snapDir()).filter((f) => f.startsWith('pre-migrate-')) : [];
+
 test('migrate() applies the full schema from an empty DB, then is idempotent', () => {
   const first = migrate();
   assert.ok(first > 0, 'first run applies at least one migration');
+  assert.deepEqual(preMigrateSnaps(), [], 'a fresh install takes no pre-migration snapshot');
 
   const second = migrate();
   assert.equal(second, 0, 'a second run applies nothing (idempotent)');
@@ -73,6 +78,38 @@ test('a throwaway migrations folder is applied and recorded like the real one', 
   } finally {
     db.run("DELETE FROM schema_migrations WHERE version = '900_probe'");
     db.exec('DROP TABLE IF EXISTS migrate_probe');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pending migrations on an existing database are preceded by a snapshot of it (F-23)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msm-migrations-'));
+  const before = preMigrateSnaps().length;
+  try {
+    fs.writeFileSync(
+      path.join(dir, '901_snap_probe.js'),
+      "exports.up = (db) => db.exec('CREATE TABLE IF NOT EXISTS snap_probe (id INTEGER)');\n"
+    );
+    assert.equal(migrate({ dir }), 1);
+    const snaps = preMigrateSnaps();
+    assert.equal(snaps.length, before + 1, 'one snapshot for this upgrade');
+    const newest = snaps.sort().at(-1);
+    assert.match(newest, /^pre-migrate-v\d+\.\d+\.\d+-[\d-]+\.db$/);
+    // The copy is the database as it was BEFORE the migration ran.
+    const { DatabaseSync } = require('node:sqlite');
+    const copy = new DatabaseSync(path.join(snapDir(), newest), { readOnly: true });
+    const tables = copy
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+      .all()
+      .map((r) => r.name);
+    copy.close();
+    assert.ok(tables.includes('servers'));
+    assert.ok(!tables.includes('snap_probe'));
+    assert.equal(migrate({ dir }), 0);
+    assert.equal(preMigrateSnaps().length, before + 1, 'nothing pending, no new snapshot');
+  } finally {
+    db.run("DELETE FROM schema_migrations WHERE version = '901_snap_probe'");
+    db.exec('DROP TABLE IF EXISTS snap_probe');
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
