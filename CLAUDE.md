@@ -101,6 +101,9 @@ allocation, disk quotas, at-rest secret encryption), and wire formats are all de
 - `public/js/lib/api.js` — `api(path, { method, body, action })` for every browser call to the JSON
   API (timeout, sign-in redirect on 401, an Error whose message is safe to toast). ESLint refuses a
   bare `fetch` outside the grandfathered list in `eslint.config.js`; migrate files off that list.
+- `public/js/lib/format.js` — the `html` tagged template escapes every interpolated value (use
+  `raw()` only for panel-made markup such as icons). ESLint refuses a plain template literal
+  assigned to `innerHTML` outside the grandfathered list in `eslint.config.js`.
 - Template helpers for JSON the browser will `JSON.parse`: `{{jsonScript x}}` inside `<script>`
   text, `{{jsonAttr x}}` inside a `data-*` attribute. Either brace count works; the name is the rule.
 

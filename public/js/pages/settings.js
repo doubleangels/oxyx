@@ -8,6 +8,7 @@ import { withBusy } from '../lib/loading.js';
 import { fillTimezoneSelect, fillCountrySelect } from '../lib/tzPicker.js';
 import { initRetentionForm } from '../lib/retention.js';
 import { initJumpNav } from '../lib/jumpNav.js';
+import { escapeHtml } from '../lib/format.js';
 
 // Panel Settings and Users & Permissions both load this file; each section
 // below binds only when its markup is on the page.
@@ -222,13 +223,6 @@ function init() {
       content,
       actions: [{ label: 'Done', kind: 'primary', onClick: () => setTimeout(() => location.reload(), 300) }],
     });
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(
-      /[&<>"']/g,
-      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
-    );
   }
 
   // ---- Users ----
