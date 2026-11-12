@@ -28,6 +28,15 @@ its own dated entry.
 
 ### Fixed
 
+- **Install App gives the right steps for your browser.** The dialog is now titled Install Oxyx
+  and names the app, and shows the real menu path for Safari, Chrome and Edge on iPhone and iPad,
+  Chrome, Edge, Samsung Internet and Firefox on Android, Safari on a Mac (Add to Dock), and Chrome
+  or Edge on a computer. Desktop Firefox is pointed to Chrome or Edge, since it usually cannot
+  install sites. The Mobile App page switches to Installed App as soon as the install finishes.
+- **One place to turn notifications on.** The old Notify Me When Tasks Finish item is gone from
+  the account menu. Turning notifications on from the Mobile App page now covers both push alerts
+  and the notice when a task you started finishes. The menu link is renamed to Mobile App, matching
+  the sidebar.
 - **Phone screenshots in the docs** are now made by `pnpm run docs:screenshots` at iPhone size, so
   all 21 in `docs/images/mobile` show the current branding and layout.
 - **Consistent wording across the panel and docs.** Schedule task names, settings change rows and

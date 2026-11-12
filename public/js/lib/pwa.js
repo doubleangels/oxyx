@@ -1,24 +1,23 @@
 // Installable app support: registers the service worker, offers "Install App"
-// in the account menu, opt-in notifications for finished background tasks, and
-// the home-screen icon badge for unread health alerts.
+// in the account menu and on the Mobile App page, and keeps the home-screen
+// icon badge in step with unread health alerts.
 //
 // The service worker and notifications need a secure context (HTTPS, or
 // localhost); on plain HTTP they stay off. Install App still shows there, to
-// explain what to do (and iOS installs over HTTP anyway).
+// explain what to do (and iOS installs over HTTP anyway). Turning
+// notifications on lives on the Mobile App page: the one permission covers
+// Web Push and the "task finished" notices below.
 
 import { openModal } from './modal.js';
 import { toast } from './toast.js';
 import { getPref } from './appPrefs.js';
-
-const secure = window.isSecureContext;
-const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-const isIos =
-  /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+import { html, raw } from './format.js';
+import { secure, isIos, isAndroid, isMac, isStandalone, browser } from './platform.js';
 
 // The account menu is cloned from a <template> each time it opens, so the
 // items are revealed on the template itself (and on any open copy).
 function reveal(selector, show = true) {
-  const tpl = document.getElementById('user-menu');
+  const tpl = /** @type {HTMLTemplateElement | null} */ (document.getElementById('user-menu'));
   const nodes = [...(tpl ? tpl.content.querySelectorAll(selector) : []), ...document.querySelectorAll(selector)];
   for (const el of nodes) el.classList.toggle('hidden', !show);
 }
@@ -33,84 +32,156 @@ if (secure && 'serviceWorker' in navigator) {
 }
 
 // ---- Install App ----
-// Every browser installs differently, so the menu item always leads somewhere
-// useful once the panel is not already running as the installed app:
-// - Chrome, Edge, Samsung Internet (secure): the browser's own install prompt.
-// - iPhone and iPad, any browser: Share, then Add to Home Screen. iOS makes a
-//   full-screen app this way even over plain HTTP.
-// - Firefox for Android and other phones with no prompt: the browser menu.
-// - Plain HTTP anywhere else: browsers only install over HTTPS, so say so
-//   instead of hiding the option and leaving people guessing.
+// Chrome, Edge and Samsung Internet on a secure address hand over their own
+// install prompt (beforeinstallprompt); the button then simply opens it.
+// Everywhere else the button explains the steps for the browser in use, so it
+// always leads somewhere useful. Once running as the installed app it hides.
 const coarse = window.matchMedia('(pointer: coarse)').matches;
+/** @type {any} */
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault(); // keep the browser's mini-infobar quiet; the menu item asks instead
+  e.preventDefault(); // keep the browser's mini-infobar quiet; the button asks instead
   deferredPrompt = e;
   reveal('[data-install-app]');
 });
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
   reveal('[data-install-app]', false);
-  toast('Installed. Open Oxyx from your home screen or app list.');
+  toast('Oxyx is installed. Open it from your home screen or app list.');
+  document.dispatchEvent(new CustomEvent('oxyx:app-installed'));
 });
-if (!standalone && (isIos || coarse || !secure)) reveal('[data-install-app]');
+if (isStandalone()) reveal('[data-install-app]', false);
+else if (isIos || coarse || !secure) reveal('[data-install-app]');
 
-/** The manual steps for this browser, as list items. */
-function installSteps() {
+const HOME = raw('<b>Add to Home Screen</b>');
+const THEN_NOTIFY = raw(
+  'To get notifications, open Oxyx from its new icon and go to <a class="text-link hover:underline" href="/settings/app#app-push">Mobile App</a>.'
+);
+
+/**
+ * The steps for this browser, and an optional note under them.
+ * @returns {{ steps: unknown[], note?: unknown }}
+ */
+function installGuide() {
   if (isIos) {
-    return [
-      'Tap the <b>Share</b> button: at the bottom of Safari (or the top on an iPad), or in the address bar in Chrome.',
-      'Scroll down and tap <b>Add to Home Screen</b>. If you see <b>Open as Web App</b>, leave it on.',
-      'Tap <b>Add</b>. The panel opens full screen from its new icon.',
-    ];
+    const where =
+      browser === 'safari'
+        ? raw('Tap <b>Share</b> (the square with an arrow) at the bottom of Safari, or at the top on an iPad.')
+        : raw('Tap <b>Share</b> in the address bar, or open the browser menu and choose <b>Share</b>.');
+    return {
+      steps: [
+        where,
+        html`Scroll down and tap ${HOME}. If you see <b>Open as Web App</b>, leave it on.`,
+        html`Tap <b>Add</b>, then open <b>Oxyx</b> from your Home Screen.`,
+      ],
+      note:
+        browser === 'safari' || browser === 'chrome' || browser === 'edge'
+          ? html`Notifications on iPhone and iPad need iOS 16.4 or later and work only in the installed app.
+            ${THEN_NOTIFY}`
+          : html`If ${HOME} is missing, open this page in Safari and try there.`,
+    };
   }
   if (!secure) {
-    return [
-      'Installing as an app needs a secure (HTTPS) address. On this address your browser can only add a shortcut that opens in a browser tab.',
-      'To install properly, open the panel through a domain with an HTTPS certificate, for example behind a reverse proxy. The README explains how.',
-      'For the shortcut instead, open your browser menu and choose <b>Add to Home Screen</b>.',
-    ];
+    return {
+      steps: [
+        raw(
+          'Installing Oxyx as an app needs a secure (HTTPS) address. On this address your browser can only add a shortcut that opens in a browser tab.'
+        ),
+        raw(
+          'To install it properly, open the panel through a domain with an HTTPS certificate, for example behind a reverse proxy. The README explains how.'
+        ),
+      ],
+      note: isAndroid ? html`For the shortcut instead, open your browser menu and choose ${HOME}.` : undefined,
+    };
   }
-  return [
-    'Open your browser menu (the <b>⋮</b> or <b>☰</b> button).',
-    'Choose <b>Install App</b> or <b>Add to Home Screen</b>.',
-    'If neither is there, the panel may already be installed. Look for it on your home screen or in your app list.',
-  ];
+  if (isAndroid) {
+    if (browser === 'samsung') {
+      return {
+        steps: [
+          raw('Tap the menu button (<b>☰</b>) at the bottom.'),
+          raw('Tap <b>Add page to</b>, then <b>Home screen</b>.'),
+          raw('Tap <b>Add</b>, then open <b>Oxyx</b> from your home screen.'),
+        ],
+        note: THEN_NOTIFY,
+      };
+    }
+    if (browser === 'firefox') {
+      return {
+        steps: [
+          raw('Tap the menu button (<b>⋮</b>).'),
+          raw('Tap <b>Add app to Home screen</b> (on older versions, <b>Install</b> or <b>Add to Home screen</b>).'),
+          raw('Confirm, then open <b>Oxyx</b> from your home screen.'),
+        ],
+        note: THEN_NOTIFY,
+      };
+    }
+    return {
+      steps: [
+        raw('Tap the menu button (<b>⋮</b>) next to the address bar.'),
+        raw('Tap <b>Add to Home screen</b>, then <b>Install</b>.'),
+        raw('Open <b>Oxyx</b> from your home screen or app list.'),
+      ],
+      note: html`If there is no install option, Oxyx may already be installed. Look for it in your app list.
+      ${THEN_NOTIFY}`,
+    };
+  }
+  // Computers.
+  if (isMac && browser === 'safari') {
+    return {
+      steps: [
+        raw('In the menu bar, choose <b>File</b>, then <b>Add to Dock</b>.'),
+        raw('Click <b>Add</b>. Oxyx opens from the Dock and Launchpad in its own window.'),
+      ],
+      note: raw('Add to Dock needs macOS Sonoma or later.'),
+    };
+  }
+  if (browser === 'firefox') {
+    return {
+      steps: [
+        raw('Firefox on a computer usually cannot install sites as apps.'),
+        raw(
+          'Open this page in Chrome or Edge and choose <b>Install App</b> there. Everything else works the same in Firefox.'
+        ),
+      ],
+    };
+  }
+  if (browser === 'edge') {
+    return {
+      steps: [
+        raw('Click the app icon at the right end of the address bar, or open the menu (<b>…</b>).'),
+        raw('Choose <b>Apps</b>, then <b>Install this site as an app</b>.'),
+        raw('Click <b>Install</b>. Oxyx opens in its own window.'),
+      ],
+      note: raw('If there is no install option, Oxyx is probably installed already. Look for it in your apps.'),
+    };
+  }
+  return {
+    steps: [
+      raw('Click the install icon at the right end of the address bar, or open the menu (<b>⋮</b>).'),
+      raw('Choose <b>Cast, save, and share</b>, then <b>Install page as app</b>.'),
+      raw('Click <b>Install</b>. Oxyx opens in its own window.'),
+    ],
+    note: raw('If there is no install option, Oxyx is probably installed already. Look for it in your apps.'),
+  };
 }
 
 document.addEventListener('click', async (e) => {
-  if (e.target.closest('[data-install-app]')) {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice.catch(() => null);
-      deferredPrompt = null;
-      return;
-    }
-    const content = document.createElement('ol');
-    content.className = 'list-decimal space-y-2 pl-5 text-sm';
-    content.innerHTML = installSteps()
-      .map((step) => `<li>${step}</li>`)
-      .join('');
-    openModal({ title: 'Install on This Device', content, actions: [{ label: 'Done', kind: 'primary' }] });
+  const target = /** @type {Element} */ (e.target);
+  if (!target.closest('[data-install-app]')) return;
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice.catch(() => null);
+    deferredPrompt = null;
     return;
   }
-  if (e.target.closest('[data-enable-notifications]')) {
-    const result = await Notification.requestPermission().catch(() => 'denied');
-    if (result === 'granted') {
-      reveal('[data-enable-notifications]', false);
-      toast(
-        'Notifications on. You will hear when a backup, restore or update finishes while the panel is in the background.'
-      );
-    } else {
-      toast('Notifications are blocked for this site. Allow them in the browser settings to turn them on.', {
-        kind: 'warn',
-      });
-    }
-  }
+  const { steps, note } = installGuide();
+  const content = document.createElement('div');
+  content.innerHTML = html`<ol class="list-decimal space-y-2 pl-5 text-sm">
+      ${steps.map((step) => html`<li>${step}</li>`)}
+    </ol>
+    ${note ? html`<p class="help mt-3">${note}</p>` : ''}`;
+  openModal({ title: 'Install Oxyx', content, actions: [{ label: 'Done', kind: 'primary' }] });
 });
-
-// ---- Notifications ----
-if (secure && 'Notification' in window && Notification.permission === 'default') reveal('[data-enable-notifications]');
 
 /**
  * Show a system notification, only while the panel is not in front (a visible

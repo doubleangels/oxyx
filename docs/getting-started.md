@@ -56,17 +56,19 @@ Made for thumbs:
 
 ### Install it as an app
 
-The panel installs like an app on phones, tablets and desktops: its own icon, full screen with no browser bars, and shortcuts to Servers, Health, Backups and Activity on a long press of the icon.
+Oxyx installs like an app on phones, tablets and computers: its own icon, full screen with no browser bars, and shortcuts to Servers, Health, Backups and Activity on a long press of the icon. Choose **Install App** in your account menu (top right) or on the [Mobile App](mobile-app.md) page. Where the browser has its own install prompt (Chrome, Edge and Samsung Internet), that opens. Everywhere else you get the steps for the browser you are using:
 
-- **Android, and Chrome or Edge on a computer:** open your account menu (top right) and choose **Install App**, or use the browser's own install button.
-- **iPhone and iPad, in Safari or Chrome:** choose **Install App** in the account menu for the steps, or tap **Share** and then **Add to Home Screen**. The installed app opens on a launch screen and runs full screen, clear of the notch and the home indicator.
-- **Firefox on Android and other browsers:** **Install App** in the account menu shows where your browser keeps its install option.
+- **iPhone and iPad (Safari, Chrome or Edge):** tap **Share**, then **Add to Home Screen**. The installed app opens on a launch screen and runs full screen, clear of the notch and the home indicator.
+- **Android:** the browser menu's **Add to Home screen** (Chrome and Edge), **Add page to** (Samsung Internet), or **Add app to Home screen** (Firefox).
+- **Mac with Safari:** **File**, then **Add to Dock** (macOS Sonoma or later).
+- **Chrome or Edge on a computer:** the install icon in the address bar, or the browser menu.
+- **Firefox on a computer** usually cannot install sites, so the steps point you to Chrome or Edge.
 
-Android and computers only install the panel when it is served over HTTPS (or opened as `localhost`). On a plain HTTP address, **Install App** explains this and how to fix it (see [the reverse proxy notes](../README.md)). iPhone and iPad install over plain HTTP too, though notifications still need HTTPS.
+Android and computers only install Oxyx when it is served over HTTPS (or opened as `localhost`). On a plain HTTP address, **Install App** explains this and how to fix it (see [the reverse proxy notes](../README.md)). iPhone and iPad install over plain HTTP too, though notifications still need HTTPS.
 
 Once installed:
 
-- **Notify Me When Tasks Finish** in the account menu sends a system notification when a backup, restore, update or other background task finishes while the panel isn't on screen.
+- Turn on notifications on the [Mobile App](mobile-app.md) page. You hear about crashes and problems even when the app is closed, and get a notice when a backup, restore, update or other task you started finishes while Oxyx isn't on screen.
 - The app icon shows a badge with the number of unread [health alerts](dashboard.md), where the system supports badges.
 - There's no browser bar, so the top bar has a **Refresh** button, and pulling down from the top of a page reloads it.
 - If the panel can't be reached, you get a clear offline screen with a **Try Again** button instead of a browser error. Nothing is cached that could show you out-of-date server data: every page and number still comes live from the panel.

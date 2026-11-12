@@ -25,7 +25,7 @@
       </div>
     {{/settings/card}}
 
-    {{#> settings/card heading="Push Notifications" icon="bell-ring" id="app-push" desc="Choose what reaches this device. Each device keeps its own choices."}}
+    {{#> settings/card heading="Push Notifications" icon="bell-ring" id="app-push" desc="Choose what reaches this device. Each device keeps its own choices. Turning them on also lets Oxyx tell you when a task you started finishes while the app is in the background."}}
       <div class="flex flex-wrap items-center gap-3">
         <span class="badge" data-push-state>Checking…</span>
         <button type="button" class="btn btn-primary hidden" data-push-enable>{{{icon 'bell' 'size-4'}}} Turn On for This Device</button>

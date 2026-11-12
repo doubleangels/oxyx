@@ -2,8 +2,9 @@
 // typed fields, the Share button, the "panel stopped answering" banner, and
 // pull to refresh in the installed app.
 import { toast } from './toast.js';
+import { isStandalone } from './platform.js';
 
-const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const standalone = isStandalone();
 const modalOpen = () => Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
 
 // ---- Keyboard hints ----

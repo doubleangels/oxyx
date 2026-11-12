@@ -8,6 +8,7 @@ import { confirmDialog } from '../lib/confirm.js';
 import { withBusy } from '../lib/loading.js';
 import { getPref, setPref } from '../lib/appPrefs.js';
 import { initJumpNav } from '../lib/jumpNav.js';
+import { secure, isIos, isStandalone, browser } from '../lib/platform.js';
 
 const root = document.getElementById('app-settings');
 if (root) init();
@@ -15,23 +16,24 @@ if (root) init();
 function init() {
   initJumpNav();
   const $ = (sel) => root.querySelector(sel);
-  const secure = window.isSecureContext;
-  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  const isIos =
-    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = isStandalone();
   const pushSupported = secure && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
   // ---- Install ----
   const mode = $('[data-app-mode]');
-  if (standalone) {
+  const showInstalled = () => {
     mode.textContent = 'Installed App';
-    mode.classList.add('badge-ok');
+    mode.className = 'badge badge-ok';
     root.querySelector('[data-install-app]').classList.add('hidden');
-  } else {
+    $('[data-ios-notice]').classList.add('hidden');
+  };
+  if (standalone) showInstalled();
+  else {
     mode.textContent = 'Running in the Browser';
     mode.classList.add('badge-info');
   }
+  // Installed from the browser's prompt while this page is open.
+  document.addEventListener('oxyx:app-installed', showInstalled);
   if (!secure) $('[data-insecure-notice]').classList.remove('hidden');
   if (isIos && !standalone) $('[data-ios-notice]').classList.remove('hidden');
 
@@ -55,7 +57,7 @@ function init() {
     const ua = navigator.userAgent;
     const os = /iphone/i.test(ua)
       ? 'iPhone'
-      : /ipad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      : isIos
         ? 'iPad'
         : /android/i.test(ua)
           ? 'Android'
@@ -66,18 +68,16 @@ function init() {
               : /linux/i.test(ua)
                 ? 'Linux'
                 : 'Device';
-    const browser = /edg\//i.test(ua)
-      ? 'Edge'
-      : /firefox|fxios/i.test(ua)
-        ? 'Firefox'
-        : /samsungbrowser/i.test(ua)
-          ? 'Samsung Internet'
-          : /chrome|crios/i.test(ua)
-            ? 'Chrome'
-            : /safari/i.test(ua)
-              ? 'Safari'
-              : '';
-    return [os, browser].filter(Boolean).join(' · ');
+    const name = {
+      safari: 'Safari',
+      chrome: 'Chrome',
+      edge: 'Edge',
+      firefox: 'Firefox',
+      samsung: 'Samsung Internet',
+      opera: 'Opera',
+      other: '',
+    }[browser];
+    return [os, name].filter(Boolean).join(' · ');
   }
 
   function keyBytes(b64url) {

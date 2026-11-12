@@ -2,20 +2,22 @@
 
 Oxyx installs as an app on phones, tablets and computers. Installed, it opens full screen from its
 own icon, keeps you signed in, and can send push notifications about your servers even when it is
-closed. Open **Mobile App** in the sidebar (or **Notifications & App** in your account menu). Every
+closed. Open **Mobile App** in the sidebar (or in your account menu). Every
 role can use it: notifications and app options are personal, and each device keeps its own.
 
 ![The Mobile App page](images/mobile-app.png)
 
 ## Installing
 
-Installing needs the panel on a secure (HTTPS) address, for example behind a reverse proxy with a
-certificate. On plain HTTP the page says so.
+Press **Install App** on the Mobile App page or in your account menu. Chrome, Edge and Samsung
+Internet open their own install prompt. Other browsers show the steps for that browser: **Share**
+then **Add to Home Screen** on iPhone and iPad, **File** then **Add to Dock** in Safari on a Mac,
+and the browser menu on Android and other computers. Once Oxyx runs as the installed app, the
+button hides and the page shows **Installed App**.
 
-- **Android (Chrome, Edge, Samsung Internet):** press **Install App** on the Mobile App page, or in
-  your account menu.
-- **iPhone and iPad:** tap **Share**, then **Add to Home Screen**, and open Oxyx from the new icon.
-- **Desktop Chrome and Edge:** press **Install App**, or use the install icon in the address bar.
+Android and computers need the panel on a secure (HTTPS) address, for example behind a reverse
+proxy with a certificate. On plain HTTP the page says so. iPhone and iPad install over plain HTTP,
+but notifications there need HTTPS, iOS 16.4 or later, and the installed app.
 
 ## Push notifications
 
