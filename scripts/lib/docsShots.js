@@ -401,6 +401,44 @@ module.exports = function shots({ base, demo }) {
       settle: 900,
     },
 
+    // ---- Phones (docs/images/mobile) -----------------------------------------
+    // One screen of each page at 390x844, the way it looks in the installed app.
+    ...[
+      ['dashboard.png', go('/')],
+      ['servers-list.png', go('/servers')],
+      ['create-wizard.png', go('/servers/new'), 1200],
+      ['server-overview.png', go(`/servers/${S}`)],
+      [
+        'world-controls-mobile.png',
+        steps(
+          go(`/servers/${S}`),
+          async (page) => {
+            await page.evaluate(() => {
+              const rail = document.querySelector('#wc-rail');
+              if (rail) rail.setAttribute('open', '');
+            });
+          },
+          reveal('#wc-rail', 70)
+        ),
+      ],
+      ['server-console.png', go(`/servers/${S}/console`), 1200],
+      ['players.png', go(`/servers/${S}/players`), 900],
+      ['monitoring.png', go(`/servers/${S}/analytics`), 900],
+      ['mods.png', go(`/servers/${F}/mods`)],
+      ['server-versions.png', go(`/servers/${F}/updates`), 900],
+      ['server-worlds.png', go(`/servers/${S}/worlds`)],
+      ['server-backups.png', go(`/servers/${S}/backups`)],
+      ['server-settings.png', go(`/servers/${S}/settings`)],
+      ['history.png', go(`/servers/${S}/history`)],
+      ['modpacks.png', go('/modpacks')],
+      ['updates.png', go('/updates')],
+      ['schedules.png', go('/schedules')],
+      ['storage.png', go('/storage')],
+      ['settings.png', go('/settings')],
+      ['permissions.png', go('/settings/permissions')],
+    ].map(([file, run, settle]) => ({ file, dir: 'mobile', phone: true, run, settle })),
+    { file: 'login.png', dir: 'mobile', phone: true, fresh: true, run: go('/login') },
+
     // ---- Account -------------------------------------------------------------
     {
       file: '2fa-user-menu.png',

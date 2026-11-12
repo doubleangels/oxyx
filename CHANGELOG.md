@@ -18,8 +18,18 @@ its own dated entry.
   in the console, a buzz on server actions, and which page the app opens on. On Android you can
   share a mod or plugin link to Oxyx and add it to a server. See `docs/mobile-app.md`.
 
+### Changed
+
+- **New server containers are named `oxyx-<server id>`** instead of `msm-<server id>`. Existing
+  containers keep working under their old name, because the panel finds them by their Docker id.
+  To rename one by hand, run `docker rename msm-<server id> oxyx-<server id>`. It is safe while the
+  server runs, and a rebuild from the panel also creates it under the new name. Custom container
+  names are untouched, and the `msm-` prefix stays reserved.
+
 ### Fixed
 
+- **Phone screenshots in the docs** are now made by `pnpm run docs:screenshots` at iPhone size, so
+  all 21 in `docs/images/mobile` show the current branding and layout.
 - **Consistent wording across the panel and docs.** Schedule task names, settings change rows and
   other short labels now use Title Case, startup phase lines end in an ellipsis while they are in
   progress, spelling is US English throughout, and leftover references to the old name are gone

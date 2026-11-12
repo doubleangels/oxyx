@@ -11,7 +11,7 @@ const { z } = require('zod');
 const httpError = require('../../utils/httpError');
 
 const dockerOverridesSchema = {
-  // '' is accepted (and only meaningful in a PATCH) as "clear it, go back to msm-<id>".
+  // '' is accepted (and only meaningful in a PATCH) as "clear it, go back to oxyx-<id>".
   containerName: z
     .union([
       z.literal(''),

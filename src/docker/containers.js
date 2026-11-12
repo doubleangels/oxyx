@@ -2,7 +2,7 @@
 'use strict';
 
 // Container lifecycle for managed Minecraft servers. All containers are
-// labeled msm.id=<serverId> and named msm-<serverId>.
+// labeled msm.id=<serverId> and named oxyx-<serverId> (or the admin's own name).
 
 const path = require('node:path');
 const { getDocker } = require('./connect');
@@ -19,11 +19,13 @@ const GAME_PORT = '25565';
 const RCON_PORT = '25575';
 const BEDROCK_PORT = '19132';
 
-// The default name keeps the pre-rename `msm-` prefix on purpose: a server
-// whose container id was never recorded is found by this name, so changing it
-// would lose track of a running container (and collide on its ports).
+// The default container name. Servers created before the rename may still run
+// as msm-<serverId>: containerRef() resolves them by their recorded container
+// id, so the name only matters for a server that has never had a container.
+// The Docker labels keep their msm.* keys because Docker cannot relabel a
+// running container, and the watcher and orphan checks match on them.
 function containerName(serverId) {
-  return `msm-${serverId}`;
+  return `oxyx-${serverId}`;
 }
 
 /**
@@ -35,7 +37,7 @@ function containerName(serverId) {
  * @param {string} spec.dataDir          absolute panel-local data dir, re-rooted to the host and bind-mounted to /data
  * @param {object} spec.ports            { game, rcon, bedrock? } host ports
  * @param {object} spec.resources        { memoryMb, swapMb, cpus }
- * @param {string} [spec.containerName]  Docker container name override; default `msm-<serverId>`
+ * @param {string} [spec.containerName]  Docker container name override; default `oxyx-<serverId>`
  * @param {string} [spec.networkName]    host Docker network to attach to; created if it does not exist; default bridge
  * @param {Array}  [spec.extraPorts]     [{container: '8100/tcp', host, internal?}] feature + admin extra ports
  * @param {Array}  [spec.extraBinds]     [{hostPath, containerPath, mode: 'rw'|'ro'}] - RAW host paths, not re-rooted

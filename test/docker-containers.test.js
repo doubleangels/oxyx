@@ -65,8 +65,8 @@ test('containerName and containerRef: the stored id wins, then the stored name, 
   );
   assert.equal(containers.containerRef('srv_cn1'), 'abc123');
   assert.equal(containers.containerRef('srv_cn2'), 'named');
-  assert.equal(containers.containerRef('srv_unknown'), 'msm-srv_unknown');
-  assert.equal(containers.containerName('srv_x'), 'msm-srv_x');
+  assert.equal(containers.containerRef('srv_unknown'), 'oxyx-srv_unknown');
+  assert.equal(containers.containerName('srv_x'), 'oxyx-srv_x');
 });
 
 test('createContainer builds the full spec: ports, limits, labels, healthcheck, binds', async () => {
@@ -88,7 +88,7 @@ test('createContainer builds the full spec: ports, limits, labels, healthcheck, 
   });
   assert.equal(id, 'new-id');
   const spec = created[0];
-  assert.equal(spec.name, 'msm-srv_spec');
+  assert.equal(spec.name, 'oxyx-srv_spec');
   assert.equal(spec.Image, 'itzg/minecraft-server:java21');
   assert.deepEqual(spec.Env, ['EULA=TRUE', 'MEMORY=2G']);
   assert.deepEqual(spec.Labels, { 'msm.id': 'srv_spec', 'msm.managed': 'true' });

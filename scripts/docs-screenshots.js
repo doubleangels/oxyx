@@ -56,6 +56,7 @@ liveCache.getAll = () => demo.liveAll();
 const OUT = {
   shots: path.join(ROOT, 'docs', 'screenshots'),
   images: path.join(ROOT, 'docs', 'images'),
+  mobile: path.join(ROOT, 'docs', 'images', 'mobile'),
 };
 
 async function main() {
@@ -79,14 +80,24 @@ async function main() {
     timezoneId: 'UTC',
     locale: 'en-US',
   };
+  // phone: shots taken as an iPhone-sized touch screen (docs/images/mobile).
+  const phoneOptions = {
+    ...contextOptions,
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+  };
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
+  /** @type {import('playwright').Page | null} */
+  let phonePage = null;
   const shots = require('./lib/docsShots')({ base, demo });
   let seeded = false;
   let done = 0;
   const failed = [];
   for (const shot of shots) {
-    if (filter && !shot.file.includes(filter)) continue;
+    if (filter && !`${shot.dir || 'images'}/${shot.file}`.includes(filter)) continue;
     const target = path.join(OUT[shot.dir || 'images'], shot.file);
     // Shots marked firstRun come first in the list and need an empty panel.
     if (!shot.firstRun && !seeded) {
@@ -96,14 +107,23 @@ async function main() {
     }
     try {
       // fresh: a separate, signed-out browser context (sign-in and setup pages).
-      const freshContext = shot.fresh ? await browser.newContext(contextOptions) : null;
-      const p = freshContext ? await freshContext.newPage() : page;
+      const options = shot.phone ? phoneOptions : contextOptions;
+      const freshContext = shot.fresh ? await browser.newContext(options) : null;
+      let p = page;
+      if (freshContext) p = await freshContext.newPage();
+      else if (shot.phone) {
+        if (!phonePage) {
+          phonePage = await (await browser.newContext(phoneOptions)).newPage();
+          await demo.signIn(phonePage, base);
+        }
+        p = phonePage;
+      }
       if (shot.viewport) await p.setViewportSize(shot.viewport);
       await shot.run(p);
       await p.evaluate(() => document.fonts && document.fonts.ready);
       await p.waitForTimeout(shot.settle ?? 350);
       await p.screenshot({ path: target, fullPage: Boolean(shot.fullPage), animations: 'disabled' });
-      if (shot.viewport) await p.setViewportSize({ width: 1440, height: 900 });
+      if (shot.viewport) await p.setViewportSize(options.viewport);
       if (freshContext) await freshContext.close();
       if (shot.after) await shot.after(page);
       done += 1;
