@@ -74,7 +74,7 @@ Three levers, in order of how much they give back:
    exotic.
 3. **Do not keep every hourly copy for a year.** Retention beats compression.
 
-## In Minecraft Server Manager
+## In Oxyx
 
 Backups take the `save-off`, flush, copy, `save-on` path, and a stop or restart requested mid-backup
 is refused until the copy finishes rather than racing it. The archive covers the whole server directory, so

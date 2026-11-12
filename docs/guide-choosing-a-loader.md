@@ -89,7 +89,7 @@ Minecraft's requirement moves with the game, and running the wrong one produces 
 Old packs really do need Java 8; this is one of the few places in software where the newest version
 is wrong.
 
-## In Minecraft Server Manager
+## In Oxyx
 
 The creation wizard asks what you want to run and picks the Java version from the table above, so the
 mismatch never happens by accident. Vanilla, Paper and Purpur are on its **Vanilla** tab; the

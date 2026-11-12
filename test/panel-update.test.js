@@ -1,6 +1,6 @@
 'use strict';
 
-// Regression coverage for Bug 6 ("Update MSM"): an admin-only settings control
+// Regression coverage for Bug 6 ("Update Oxyx"): an admin-only settings control
 // that compares the installed version against the latest GitHub release and
 // links to it. Never modifies panel files, never hits GitHub at page render.
 
@@ -50,7 +50,7 @@ const RELEASE = {
   tag: `v${NEWER}`,
   name: `v${NEWER}`,
   publishedAt: '2026-01-01T00:00:00Z',
-  htmlUrl: `https://github.com/anefzaoui/minecraft-server-manager/releases/tag/v${NEWER}`,
+  htmlUrl: `https://github.com/doubleangels/oxyx/releases/tag/v${NEWER}`,
 };
 
 test('checkLatest skips pre-releases so an rc tag is never offered as the update', async (t) => {

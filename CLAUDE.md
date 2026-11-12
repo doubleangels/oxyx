@@ -6,7 +6,7 @@ this file is the short version plus the things that will trip you up.
 
 ## What this is
 
-Minecraft Server Manager is a **single-process, server-rendered Node.js control panel** for
+Oxyx is a **single-process, server-rendered Node.js control panel** for
 Minecraft servers that run as Docker containers (the `itzg/docker-minecraft-server` image). It
 talks to the Docker daemon over its API via **dockerode** — never by shelling out to the `docker`
 CLI. All persistent state lives under one directory (`$DATA_DIR`, default `./data`): the SQLite DB,

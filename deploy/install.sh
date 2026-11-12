@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Minecraft Server Manager installer, for any Linux host with Docker (or a host
+# Oxyx installer, for any Linux host with Docker (or a host
 # where we may install it). One code path: a provider-specific deployment should
 # call this rather than re-implementing it.
 #
-#   curl -fsSL https://raw.githubusercontent.com/anefzaoui/minecraft-server-manager/main/deploy/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/doubleangels/oxyx/main/deploy/install.sh | sudo bash
 #
 # It is safe to run twice. A second run upgrades the panel to the newest image
 # and leaves your data, .env, and any edits to docker-compose.yml alone (the
@@ -21,18 +21,18 @@ INSTALL_SH_VERSION='1.0.0'
 # ---------------------------------------------------------------------------
 # Defaults. Every one of them can be overridden with a flag; see usage().
 
-DIR="${MSM_DIR:-/opt/msm}"
-PORT="${MSM_PORT:-25564}"
-BIND="${MSM_BIND:-0.0.0.0}"
-TAG="${MSM_TAG:-latest}"
-IMAGE="${MSM_IMAGE:-ghcr.io/anefzaoui/minecraft-server-manager}"
-CONTAINER_NAME='minecraft-server-manager'
+DIR="${OXYX_DIR:-${MSM_DIR:-/opt/oxyx}}"
+PORT="${OXYX_PORT:-${MSM_PORT:-25564}}"
+BIND="${OXYX_BIND:-${MSM_BIND:-0.0.0.0}}"
+TAG="${OXYX_TAG:-${MSM_TAG:-latest}}"
+IMAGE="${OXYX_IMAGE:-${MSM_IMAGE:-ghcr.io/doubleangels/oxyx}}"
+CONTAINER_NAME='oxyx'
 SKIP_DOCKER=0
 NO_START=0
 ASSUME_YES=0
 ACTION='install'
 PURGE=0
-HEALTH_TIMEOUT="${MSM_HEALTH_TIMEOUT:-180}"
+HEALTH_TIMEOUT="${OXYX_HEALTH_TIMEOUT:-${MSM_HEALTH_TIMEOUT:-180}}"
 
 # ---------------------------------------------------------------------------
 # Output. Colour only when a human is watching.
@@ -59,7 +59,7 @@ die() {
 
 usage() {
   cat <<EOF
-Minecraft Server Manager installer ${INSTALL_SH_VERSION}
+Oxyx installer ${INSTALL_SH_VERSION}
 
 Usage: install.sh [options]
 
@@ -78,8 +78,8 @@ Options:
   -y, --yes           do not ask anything
   -h, --help          this text
 
-Environment equivalents: MSM_DIR, MSM_PORT, MSM_BIND, MSM_TAG, MSM_IMAGE,
-MSM_HEALTH_TIMEOUT.
+Environment equivalents: OXYX_DIR, OXYX_PORT, OXYX_BIND, OXYX_TAG, OXYX_IMAGE,
+OXYX_HEALTH_TIMEOUT (MSM_* variables accepted as fallback).
 EOF
 }
 
@@ -120,7 +120,7 @@ valid_dir() {
 render_env() {
   local dir="$1"
   cat <<EOF
-# Written by the MSM installer. The panel reads DATA_DIR_HOST to translate the
+# Written by the Oxyx installer. The panel reads DATA_DIR_HOST to translate the
 # paths it hands to Docker onto the host filesystem, so it must stay an
 # absolute host path and must match the bind mount in docker-compose.yml.
 DATA_DIR_HOST=${dir}/data
@@ -130,7 +130,7 @@ EOF
 render_compose() {
   local image="$1" tag="$2" bind="$3" port="$4"
   cat <<EOF
-# Written by the MSM installer ${INSTALL_SH_VERSION}. Edits survive an upgrade:
+# Written by the Oxyx installer ${INSTALL_SH_VERSION}. Edits survive an upgrade:
 # a later run keeps this file and saves its own version as docker-compose.yml.bak
 # only when the generated content would change.
 services:
@@ -162,7 +162,7 @@ EOF
 require_linux() {
   local kernel
   kernel="$(uname -s)"
-  [ "$kernel" = 'Linux' ] || die "this installer is for Linux hosts; on ${kernel}, run MSM from source instead (see the README)."
+  [ "$kernel" = 'Linux' ] || die "this installer is for Linux hosts; on ${kernel}, run Oxyx from source instead (see the README)."
 }
 
 detect_arch() {
@@ -308,7 +308,7 @@ primary_address() {
 print_next_steps() {
   local address
   address="$(primary_address)"
-  printf '\n%sMSM is up.%s\n\n' "$C_GREEN$C_BOLD" "$C_OFF"
+  printf '\n%sOxyx is up.%s\n\n' "$C_GREEN$C_BOLD" "$C_OFF"
   if [ "$BIND" = '127.0.0.1' ]; then
     info "The panel listens on 127.0.0.1:${PORT}. Point your reverse proxy at it."
   else
@@ -350,7 +350,7 @@ do_install() {
   valid_dir "$DIR" || die "--dir must be an absolute path without spaces or shell characters, got '${DIR}'."
   require_root
 
-  step "Installing MSM on $(os_pretty_name) (${arch}) into ${DIR}."
+  step "Installing Oxyx on $(os_pretty_name) (${arch}) into ${DIR}."
   ensure_docker
 
   step 'Writing the deployment.'
@@ -399,7 +399,7 @@ do_uninstall() {
   # The Minecraft servers are sibling containers, so compose knows nothing about
   # them. Say so rather than leaving them running silently.
   local servers
-  servers="$($SUDO docker ps -a --filter 'name=^msm-' --format '{{.Names}}' 2>/dev/null || true)"
+  servers="$($SUDO docker ps -a --filter 'name=^(oxyx|msm)-' --format '{{.Names}}' 2>/dev/null || true)"
   if [ -n "$servers" ]; then
     warn 'These Minecraft server containers were created by the panel and are still here:'
     printf '%s\n' "$servers" | sed 's/^/    /'

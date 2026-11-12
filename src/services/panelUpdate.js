@@ -1,6 +1,6 @@
 'use strict';
 
-// Panel self-update check ("Update MSM" on the Settings page): compares the
+// Panel self-update check ("Update Oxyx" on the Settings page): compares the
 // installed app version against the newest GitHub release and surfaces a link
 // to it. Never modifies panel files - the admin downloads and installs the
 // release themselves. On-demand only: rendering the Settings page never calls
@@ -12,7 +12,7 @@ const db = require('../db');
 const githubApi = require('./githubApi');
 const installedVersion = require('../../package.json').version;
 
-const PANEL_REPO = 'anefzaoui/minecraft-server-manager';
+const PANEL_REPO = 'doubleangels/oxyx';
 // Mapped result row (the underlying github: row already carries ETag + TTL).
 const CACHE_KEY = 'panel-latest-release';
 const RELEASES_CACHE_KEY = `github:/repos/${PANEL_REPO}/releases?per_page=10`;

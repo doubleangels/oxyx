@@ -27,7 +27,7 @@ try {
 } catch (err) {
   if (err && err.code === 'ERR_UNKNOWN_BUILTIN_MODULE') {
     fail(
-      `Minecraft Server Manager needs Node.js ${MIN_MAJOR} or newer.\n` +
+      `Oxyx needs Node.js ${MIN_MAJOR} or newer.\n` +
         `  You are running Node.js ${nodeVersion}, where the built-in \`node:sqlite\` module\n` +
         `  is not available (on the Node.js 22.x line it exists only behind\n` +
         `  --experimental-sqlite). Install Node.js ${MIN_MAJOR} LTS from https://nodejs.org/\n` +

@@ -184,7 +184,7 @@ async function notify(serverId, kind, payload = {}) {
 
 function buildEmbed(kind, { title, description, fields, color, timestamp } = {}) {
   return {
-    username: 'Minecraft Server Manager',
+    username: 'Oxyx',
     embeds: [
       {
         title: title || 'Server Event',
@@ -196,7 +196,7 @@ function buildEmbed(kind, { title, description, fields, color, timestamp } = {})
           inline: f.inline !== false,
         })),
         timestamp: timestamp || new Date().toISOString(),
-        footer: { text: 'Minecraft Server Manager' },
+        footer: { text: 'Oxyx' },
       },
     ],
   };

@@ -1,8 +1,8 @@
-# Contributing
+# Development Guide
 
-Thanks for your interest in improving Minecraft Server Manager. This project is a server-rendered
-Node.js app with a minimal build step (Tailwind CSS plus an esbuild client-JS bundle), so the
-barrier to hacking on it is low.
+Oxyx is a solo project maintained exclusively by doubleangels and is not accepting outside
+contributions or pull requests. This document records the architecture, development setup,
+coding conventions, and quality gates for the repository.
 
 ## Getting set up
 
@@ -29,7 +29,7 @@ CodeGraph CLI, run its daemon at the repo root, and it maintains a `.codegraph/`
 directory is gitignored (a large, machine-local SQLite index plus a daemon socket and PID file) and
 each developer's daemon rebuilds it, so there's nothing to commit or share.
 
-## Before you open a PR
+## Quality Gates
 
 These are the exact gates CI runs. Each works on a clean clone with no Docker or running app:
 
@@ -45,12 +45,10 @@ pnpm run build         # Tailwind CSS + esbuild client-JS bundle
 test:smoke` is the separate live sweep against a running panel. While iterating on a change, `pnpm run
 test:watch` re-runs the suite on every save.
 
-`main` is protected: the CI status check `quality` is required. It is an aggregate job that is green
-only when the `checks` job (lint, format, typecheck, build), the `tests` job, and the PR-only
-`docker-build` job all pass. The PR branch must be up to date with `main`, and direct pushes, force
-pushes and deletion are blocked for everyone including admins. Every change (releases too) lands
-through a PR. The same workflow publishes the `:latest` image and the GitHub Release on a push to
-`main`, and those jobs only run after the gates pass, so an untested commit can never ship.
+The CI status check `quality` is required. It is an aggregate job that is green only when the `checks`
+job (lint, format, typecheck, build), the `tests` job, and the container build job all pass. The
+same workflow publishes the `:latest` image and the GitHub Release on a push to `main`, and those
+jobs only run after the gates pass, so an untested commit can never ship.
 
 Keep changes focused and match the surrounding style (Prettier enforces it). Server code is **plain
 CommonJS JS, with no TypeScript compile step**. The browser code in `public/js/` is ESM, bundled and
@@ -235,28 +233,12 @@ The script keeps its logic in functions and only runs `main` when executed, so t
 source it and call pieces directly. Anything you add to it wants a scenario in
 `test/deploy/install-scenarios.sh`.
 
-## Reporting bugs / requesting features
+## Issue Reporting
 
-Open an issue with clear reproduction steps (and your OS + Docker flavor for anything
-environment-specific); the issue forms ask for the details that save a round trip. Not sure it's a
-bug? [`SUPPORT.md`](SUPPORT.md) covers where to ask.
+If you encounter a bug or have a suggestion, open an issue with clear reproduction steps and
+environment details. Not sure whether something is a bug? [`SUPPORT.md`](SUPPORT.md) covers where to
+look.
 
-Security issues go through [private reporting](https://github.com/anefzaoui/minecraft-server-manager/security/advisories/new)
+Security issues go through [private reporting](https://github.com/doubleangels/oxyx/security/advisories/new)
 rather than a public issue. [`SECURITY.md`](SECURITY.md) explains what to include and what happens
 next.
-
-## Getting your face on the README
-
-The avatar strip near the top of the README is `docs/images/contributors.svg`, generated from the
-repository's contributor list by `scripts/contributors-svg.js`. Land one commit and you're in it:
-a workflow regenerates the strip on the first of each month and opens a PR when it changes, and you
-can refresh it yourself any time with `pnpm run contributors`.
-
-The avatars are baked into that one file, so the README never asks a third-party image service for
-anything.
-
-Below it sits a second strip, `docs/images/contributors-reports.svg`, for people whose bug report,
-reproduction, or idea shipped without a commit behind it. GitHub's contributor list only counts
-commits and cannot know that, so those logins live in [`docs/credits.json`](docs/credits.json) and
-the same script draws them. Add a login there and run `pnpm run contributors`. Anyone who later
-lands a commit drops out of that strip automatically and turns up in the main one.

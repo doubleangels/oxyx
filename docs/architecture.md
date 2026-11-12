@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-Minecraft Server Manager is a single-process, server-rendered Node.js application. It manages
+Oxyx is a single-process, server-rendered Node.js application. It manages
 Minecraft servers that run as Docker containers using the
 [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server) image, talking to the
 Docker daemon over its API (never by shelling out to the `docker` CLI).

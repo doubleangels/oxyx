@@ -74,15 +74,16 @@ test('buildOtpauthUrl() embeds the secret, issuer, and account', () => {
   const url = totp.buildOtpauthUrl('JBSWY3DPEHPK3PXP', { account: 'alice' });
   assert.match(url, /^otpauth:\/\/totp\//);
   assert.match(url, /secret=JBSWY3DPEHPK3PXP/);
+  assert.match(url, /issuer=Oxyx/);
   assert.match(url, /alice/);
 });
 
 test('buildOtpauthUrl() percent-encodes spaces in the issuer (no "+" that apps show literally)', () => {
-  const url = totp.buildOtpauthUrl('JBSWY3DPEHPK3PXP', { account: 'alice' });
-  // The default issuer "Minecraft Server Manager" must appear as %20, never "+",
+  const url = totp.buildOtpauthUrl('JBSWY3DPEHPK3PXP', { account: 'alice', issuer: 'Oxyx Server' });
+  // An issuer with spaces must appear as %20, never "+",
   // so it byte-matches the label prefix and apps like Google Authenticator don't
-  // display "Minecraft+Server+Manager".
-  assert.match(url, /issuer=Minecraft%20Server%20Manager/);
+  // display "Oxyx+Server".
+  assert.match(url, /issuer=Oxyx%20Server/);
   assert.doesNotMatch(url, /issuer=[^&]*\+/);
 });
 

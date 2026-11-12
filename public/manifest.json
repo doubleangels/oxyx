@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Minecraft Server Manager",
-  "short_name": "MSM",
+  "name": "Oxyx",
+  "short_name": "Oxyx",
   "description": "Run, watch and back up your Minecraft servers on Docker.",
   "lang": "en",
   "dir": "ltr",

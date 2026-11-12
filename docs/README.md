@@ -1,4 +1,4 @@
-# Minecraft Server Manager Documentation
+# Oxyx Documentation
 
 A complete, self-hosted control panel for [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server). Create, run, and manage Minecraft servers from your browser. No command line, no editing YAML by hand.
 

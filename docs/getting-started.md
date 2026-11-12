@@ -76,7 +76,7 @@ Once installed:
 - Press <kbd>/</kbd> to jump to the search box on any page that has one.
 - Each server section reopens on the sub-tab you last used: leave **Content** from **Worlds**, and **Content** brings you back to **Worlds**.
 - While a background task runs, the browser tab's title starts with how many are running, for example "(1) Backups".
-- A server's page shows its live status in the tab title, for example "🟢 Alpha Survival (Running) · MSM", so a start, stop or crash shows without switching tabs.
+- A server's page shows its live status in the tab title, for example "🟢 Alpha Survival (Running) · Oxyx", so a start, stop or crash shows without switching tabs.
 - The **star** on a server card pins it to the top of the dashboard, the server list and the sidebar (pins are kept per browser).
 - The **address** on each server card, and the copy button beside each server in the sidebar, copy what players type to connect: your public domain when one is set (**Panel Settings → General**), otherwise this machine's LAN address.
 - **Select** on the dashboard or server list picks several servers at once, then **Start**, **Restart**, **Stop** or **Back Up** runs on all of them.

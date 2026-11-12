@@ -140,7 +140,7 @@ test('banPlayer/pardonPlayer round-trip and clean control-char-laden reasons', a
   let file = JSON.parse(fs.readFileSync(dataPath('servers', id, 'banned-players.json'), 'utf8'));
   assert.equal(file[0].reason, 'cheating');
   assert.equal(file[0].expires, 'forever');
-  assert.equal(file[0].source, 'Minecraft Server Manager');
+  assert.equal(file[0].source, 'Oxyx');
 
   await players.pardonPlayer(id, 'Steve');
   file = JSON.parse(fs.readFileSync(dataPath('servers', id, 'banned-players.json'), 'utf8'));

@@ -1,18 +1,16 @@
 # Security
 
-MSM talks to the Docker daemon, holds the credentials for your servers, and can read and write
+Oxyx talks to the Docker daemon, holds the credentials for your servers, and can read and write
 anything under its data directory. A bug in it can be worth a lot more than a crash, so security
 reports are welcome and taken seriously.
 
-## Reporting a vulnerability
+## Reporting a Vulnerability
 
 **Please do not open a public issue.** Use GitHub's private reporting instead:
 
-> [Report a vulnerability](https://github.com/anefzaoui/minecraft-server-manager/security/advisories/new)
+> [Report a vulnerability](https://github.com/doubleangels/oxyx/security/advisories/new)
 
-That form is private between you and the maintainers until a fix ships. If you cannot use it, say
-hello in the [Discord](https://discord.gg/Ud6TrQkbDZ) and ask for a private channel, without posting
-the details publicly.
+That form is private between you and the maintainer until a fix ships.
 
 Useful things to include, as far as you have them:
 
@@ -30,19 +28,19 @@ You do not need a working exploit. A clear description of the flaw is plenty.
 - **When a fix is ready**, a release, a note in the changelog, and credit to you by name or handle if
   you want it. If you would rather stay anonymous, that is fine too.
 
-If a report turns out to be a configuration problem rather than a flaw in MSM, you will get an answer
+If a report turns out to be a configuration problem rather than a flaw in Oxyx, you will get an answer
 explaining why, not silence.
 
 ## Supported versions
 
-Fixes land on the latest release. MSM is young and moves quickly, so there are no long-term support
+Fixes land on the latest release. Oxyx is young and moves quickly, so there are no long-term support
 branches yet: upgrading to the newest version is the supported path.
 
 ## Things that are already known
 
 These are properties of the design rather than bugs, and they are documented in the README:
 
-- **MSM needs the Docker socket.** Anyone who can use the panel as an admin can effectively run
+- **Oxyx needs the Docker socket.** Anyone who can use the panel as an admin can effectively run
   commands as root on the host. Treat panel admin access the same way you treat SSH access.
 - **The panel speaks plain HTTP by itself.** Put it behind a reverse proxy with TLS before exposing
   it beyond your own network, and set `COOKIE_SECURE`.

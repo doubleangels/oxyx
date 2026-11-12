@@ -1,7 +1,7 @@
 // @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
-// Modpack installation & pinning. Minecraft Server Manager NEVER installs an unpinned pack:
+// Modpack installation & pinning. Oxyx NEVER installs an unpinned pack:
 // "latest" is resolved to a concrete version id at install time, so container
 // restarts can never silently upgrade a server (discovery: unpinned
 // AUTO_CURSEFORGE/MODRINTH auto-upgrade on every start).

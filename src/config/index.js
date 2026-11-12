@@ -222,7 +222,7 @@ function resolveDataDirHost() {
   const isAbsolute = raw.startsWith('/') || /^[A-Za-z]:[\\/]/.test(raw);
   if (!isAbsolute) {
     throw new Error(
-      `DATA_DIR_HOST must be an absolute host path (e.g. /opt/msm/data or C:\\msm\\data) - got "${raw}". ` +
+      `DATA_DIR_HOST must be an absolute host path (e.g. /opt/oxyx/data or C:\\oxyx\\data) - got "${raw}". ` +
         'It is the host-side path of the directory mounted at DATA_DIR inside the panel container.'
     );
   }

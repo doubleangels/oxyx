@@ -1,5 +1,5 @@
 # Normalize line endings to LF on commit so CI (Linux) and the Prettier
-# end-of-line check stay consistent across Windows/macOS/Linux contributors.
+# end-of-line check stay consistent across Windows/macOS/Linux environments.
 * text=auto eol=lf
 
 # Binary assets - never touch.

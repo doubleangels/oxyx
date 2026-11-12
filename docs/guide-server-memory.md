@@ -80,7 +80,7 @@ regular player on a modded server.
 View distance is the other big lever. Dropping from 12 to 8 chunks can save a gigabyte on a busy
 server and is barely noticeable in play.
 
-## In Minecraft Server Manager
+## In Oxyx
 
 Each server has two separate fields, **Java heap** and **container memory limit**, precisely because
 they are different questions. The create wizard sets the container limit 50 percent above the heap

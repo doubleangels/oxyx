@@ -30,8 +30,8 @@ function installRuntimeGuards() {
   // visible instead of being silently swallowed.
   //
   // Operators running under a supervisor (systemd, Docker restart:) that WANT a
-  // hard restart on an unexpected fault can set MSM_EXIT_ON_FATAL=1.
-  const exitOnFatal = /^(1|true|yes)$/i.test(process.env.MSM_EXIT_ON_FATAL || '');
+  // hard restart on an unexpected fault can set OXYX_EXIT_ON_FATAL=1 (or MSM_EXIT_ON_FATAL=1).
+  const exitOnFatal = /^(1|true|yes)$/i.test(process.env.OXYX_EXIT_ON_FATAL || process.env.MSM_EXIT_ON_FATAL || '');
 
   const report = (kind, err) => {
     const info = serializeError(err);

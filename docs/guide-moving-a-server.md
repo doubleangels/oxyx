@@ -73,7 +73,7 @@ mod jars themselves, not a list: the versions matter, and "latest" is a differen
 Check your backups are yours, too. A backup that only exists inside the panel you are leaving is not
 a backup you own.
 
-## In Minecraft Server Manager
+## In Oxyx
 
 The whole panel is one directory. Copying it to another machine and starting the panel there brings
 every server, world, backup and setting with it, which makes moving the panel itself a copy rather

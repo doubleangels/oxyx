@@ -90,11 +90,11 @@ assert_file "$ROOT/docker-compose.yml" 'wrote docker-compose.yml'
 assert_file "$ROOT/.env" 'wrote .env'
 if [ -d "$ROOT/data" ]; then ok 'created the data directory'; else bad 'created the data directory'; fi
 assert_contains "DATA_DIR_HOST=$ROOT/data" "$(cat "$ROOT/.env")" '.env points at the data directory'
-assert_contains "ghcr.io/anefzaoui/minecraft-server-manager:latest" "$(cat "$ROOT/docker-compose.yml")" 'compose uses the published image'
+assert_contains "ghcr.io/doubleangels/oxyx:latest" "$(cat "$ROOT/docker-compose.yml")" 'compose uses the published image'
 assert_contains "'0.0.0.0:25564:25564'" "$(cat "$ROOT/docker-compose.yml")" 'publishes the default port'
 assert_contains 'pull' "$(cat "$MOCK_DIR/calls.log")" 'pulled the image'
 assert_contains 'up -d' "$(cat "$MOCK_DIR/calls.log")" 'started the stack'
-assert_contains 'MSM is up' "$LAST_OUT" 'reports success'
+assert_contains 'Oxyx is up' "$LAST_OUT" 'reports success'
 assert_contains 'root-equivalent' "$LAST_OUT" 'warns about the Docker socket'
 if [ "$(stat -c '%a' "$ROOT/.env" 2>/dev/null || printf '')" = '600' ]; then
   ok '.env is not world readable'
@@ -148,7 +148,7 @@ assert_contains 'reverse proxy at it' "$LAST_OUT" 'tells you to point a proxy at
 scenario '--tag pins the image'
 fresh_root
 run_installer --dir "$ROOT" --tag v0.14.0 --no-start
-assert_contains 'minecraft-server-manager:v0.14.0' "$(cat "$ROOT/docker-compose.yml")" 'uses the pinned tag'
+assert_contains 'oxyx:v0.14.0' "$(cat "$ROOT/docker-compose.yml")" 'uses the pinned tag'
 
 scenario 'bad input is refused before anything is written'
 fresh_root

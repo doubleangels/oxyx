@@ -1,67 +1,27 @@
-# Minecraft Server Manager
+# Oxyx
 
 <p align="center">
   <img src="docs/screenshots/01-dashboard.png" alt="Dashboard with all Minecraft servers at a glance" width="920">
 </p>
 
 <p align="center">
-  <a href="https://github.com/anefzaoui/minecraft-server-manager/releases/latest"><img src="https://img.shields.io/github/v/release/anefzaoui/minecraft-server-manager?logo=github" alt="GitHub release"></a>
-  <a href="https://github.com/anefzaoui/minecraft-server-manager/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/anefzaoui/minecraft-server-manager/ci.yml?logo=github&label=ci" alt="CI"></a>
-  <a href="https://github.com/anefzaoui/minecraft-server-manager/pkgs/container/minecraft-server-manager"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
-  <img src="https://img.shields.io/github/stars/anefzaoui/minecraft-server-manager?logo=github" alt="GitHub stars">
+  <a href="https://github.com/doubleangels/oxyx/releases/latest"><img src="https://img.shields.io/github/v/release/doubleangels/oxyx?logo=github" alt="GitHub release"></a>
+  <a href="https://github.com/doubleangels/oxyx/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/doubleangels/oxyx/ci.yml?logo=github&label=ci" alt="CI"></a>
+  <a href="https://github.com/doubleangels/oxyx/pkgs/container/oxyx"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=nodedotjs&logoColor=white" alt="Node 24+">
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/anefzaoui/minecraft-server-manager" alt="MIT license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/doubleangels/oxyx" alt="MIT license"></a>
 </p>
 
 A complete, self-hosted control panel for Minecraft servers that run as Docker containers on the
 [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server) image. It aims to
 rival commercial panels (Pterodactyl, Multicraft, AMP) in polish and capability while staying
-entirely free and local.
+entirefree and local.
 
 **Zero paid services. Everything runs on your machine, and your entire panel is one folder you can
 copy to migrate.**
 
 | 🚀 [Installation](#installation) | ✨ [Getting Started](docs/getting-started.md) | 📜 [Documentation](docs/README.md) | 🖼️ [Screenshots](#screenshots) |
 | -------------------------------- | --------------------------------------------- | ---------------------------------- | ------------------------------ |
-
-<h3 align="center">💬 We now have a Discord!</h3>
-
-<p align="center">
-  <b>Report bugs, suggest features, get help from real humans, and show off your servers.</b><br>
-  There's a support forum, a showcase for your creations, and a dev corner if you want to contribute.
-</p>
-
-<p align="center">
-  <a href="https://discord.gg/Ud6TrQkbDZ"><img src="https://img.shields.io/badge/Join%20the%20MSM%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Join the MSM Discord"></a>
-</p>
-
-<h3 align="center">👥 The people who build MSM</h3>
-
-<p align="center">
-  <a href="https://github.com/anefzaoui/minecraft-server-manager/graphs/contributors"><img src="docs/images/contributors.svg" alt="The people who have contributed code to this panel" width="636"></a>
-</p>
-
-<p align="center">
-  <b>Most of this panel was written by people who showed up and stayed.</b><br>
-  Every one of them started with a single issue or a single pull request, and that is still how it
-  starts. Fix a typo, send a crash log, or pick something from
-  <a href="#status--areas-that-need-work">areas that need work</a>. You will get help along the way,
-  and your face lands here.
-</p>
-
-<p align="center">
-  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/Start%20here-CONTRIBUTING.md-3fa62b?style=for-the-badge" alt="Start here: CONTRIBUTING.md"></a>
-  <a href="#status--areas-that-need-work"><img src="https://img.shields.io/badge/Pick%20a%20target-areas%20that%20need%20work-24292f?style=for-the-badge" alt="Pick a target: areas that need work"></a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/anefzaoui/minecraft-server-manager/issues"><img src="docs/images/contributors-reports.svg" alt="People credited for reports and ideas that shipped" width="374"></a>
-</p>
-
-<p align="center">
-  <sub><b>These people made MSM better without writing any code.</b> A careful bug report or a good
-  idea is worth just as much here, and it puts you on this page too.</sub>
-</p>
 
 ## Features
 
@@ -108,13 +68,13 @@ by host path).
 ### 🐳 Option 1: Docker (Linux hosts, Portainer, Dockge, compose)
 
 A pre-built multi-arch image (amd64 + arm64) is published to GHCR on every release:
-`ghcr.io/anefzaoui/minecraft-server-manager:latest` (or pin a version tag, e.g. `:v0.14.1`).
+`ghcr.io/doubleangels/oxyx:latest` (or pin a version tag, e.g. `:v0.14.1`).
 
 On a fresh Linux server, the installer does the whole thing: installs Docker if it's missing, writes
-`/opt/msm`, starts the panel, and waits until it answers.
+`/opt/oxyx`, starts the panel, and waits until it answers.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anefzaoui/minecraft-server-manager/main/deploy/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/doubleangels/oxyx/main/deploy/install.sh | sudo bash
 ```
 
 Run it again any time to upgrade; it keeps your data, your `.env`, and any edits you made to the
@@ -125,8 +85,8 @@ Prefer to drive it yourself, or using Portainer/Dockge? Grab the
 [docker-compose.yml](docker-compose.yml) from the repo root, set **one** variable, and start:
 
 ```bash
-mkdir -p /opt/msm/data
-echo "DATA_DIR_HOST=/opt/msm/data" > .env   # ABSOLUTE host path for all panel data
+mkdir -p /opt/oxyx/data
+echo "DATA_DIR_HOST=/opt/oxyx/data" > .env   # ABSOLUTE host path for all panel data
 docker compose up -d
 ```
 
@@ -173,8 +133,8 @@ host.docker.internal:host-gateway` (Docker Engine 20.10+) for the fallback path;
 ### 🖥️ Option 2: From source (any OS, incl. Windows/macOS)
 
 ```bash
-git clone https://github.com/anefzaoui/minecraft-server-manager.git minecraft-server-manager
-cd minecraft-server-manager
+git clone https://github.com/doubleangels/oxyx.git oxyx
+cd oxyx
 pnpm install               # installs deps and builds the Tailwind CSS (postinstall)
 pnpm run build             # optional: also build the esbuild client-JS bundle (raw source is served otherwise)
 cp .env.example .env      # optional - all values have sane defaults
@@ -204,7 +164,7 @@ with whatever Node version started the PM2 _daemon_, and later switching your sh
 Pin the interpreter per app:
 
 ```bash
-pm2 start src/server.js --name minecraft-server-manager --interpreter "$(nvm which 24)"
+pm2 start src/server.js --name oxyx --interpreter "$(nvm which 24)"
 pm2 save
 ```
 
@@ -507,7 +467,7 @@ Exposing the raw panel port on the internet means logins travel over **plain HTT
 | `SESSION_SECRET`                                                                         | auto-generated             | Signs session cookies. Auto-created and persisted at `$DATA_DIR/.session-secret` if unset. At-rest encryption uses a **separate** auto-generated `$DATA_DIR/.secret-key`, so rotating this no longer invalidates stored secrets.                                                                                                                                                                                                                                                                                                   |
 | `TRUST_PROXY` / `COOKIE_SECURE` / `COOKIE_SAMESITE`                                      | - / - / `lax`              | Set when behind a TLS-terminating reverse proxy. `TRUST_PROXY` (hop count, `loopback`, or IP/CIDR list; a bare `true` is deprecated and treated as `1` with a boot warning, because it trusts a spoofable `X-Forwarded-For`) is required for `req.ip` to see the real client, which the rate limiters key on. `COOKIE_SECURE` is `true`/`false`/`auto` (`auto` only works together with `TRUST_PROXY`; the panel warns at boot when it is set alone). `COOKIE_SAMESITE` is `lax`/`strict`/`none`; `none` requires `COOKIE_SECURE`. |
 | `RATE_LIMIT_API_PER_MIN` / `RATE_LIMIT_AUTH_PER_15MIN` / `RATE_LIMIT_PUBLIC_API_PER_MIN` | `1200` / `100` / `120`     | Per-client-IP request ceilings: all of `/api`, login / 2FA / setup POSTs, and per-token requests to the public `/api/v1`. `0` disables that limiter. A volume backstop on top of the per-account login lockout.                                                                                                                                                                                                                                                                                                                    |
-| `MSM_EXIT_ON_FATAL`                                                                      | -                          | `1`/`true`/`yes` makes the post-boot runtime guard hard-exit on an uncaught exception/rejection instead of logging and staying up, for supervised deployments (`systemd`, Docker `restart:`).                                                                                                                                                                                                                                                                                                                                      |
+| `OXYX_EXIT_ON_FATAL` / `MSM_EXIT_ON_FATAL`                                               | -                          | `1`/`true`/`yes` makes the post-boot runtime guard hard-exit on an uncaught exception/rejection instead of logging and staying up, for supervised deployments (`systemd`, Docker `restart:`).                                                                                                                                                                                                                                                                                                                                      |
 | `DOCKER_HOST`                                                                            | auto-detected              | Docker endpoint override for rootless Docker, Podman, or a remote daemon (per-OS socket/pipe otherwise).                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `CF_API_KEY`                                                                             | -                          | Optional [CurseForge API key](https://console.curseforge.com/) to seed on first run (also settable in the UI). Wrap in single quotes; CF keys often contain `$`.                                                                                                                                                                                                                                                                                                                                                                   |
 | `GITHUB_TOKEN`                                                                           | -                          | Optional GitHub token to raise the unauthenticated API quota for the GitHub Releases content source (ETag caching keeps usage minimal either way).                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -703,11 +663,9 @@ The field catalog in `src/config/` is the single source of truth for server sett
 | `pnpm run test:watch` | unit tests, re-run on every save                                                     |
 | `pnpm run test:smoke` | live QA sweep against a running panel (needs Docker)                                 |
 
-## Status & areas that need work
+## Status & Planned Improvements
 
-This is an early public release. The core lifecycle is solid, but several features are
-deliberately "good enough for now": honest contribution targets rather than finished work. If you
-want to help, start here.
+The core lifecycle is solid, but several features have known limitations or are planned for future polish:
 
 - **Custom RTP (random teleport)**: the panel's own random-teleport picks a point in a ring around
   the player and lands them on the highest solid block via `spreadplayers`. It retries a few times to
@@ -750,20 +708,12 @@ want to help, start here.
   confirmed only against a handful of versions and may drift; and there's no automated end-to-end
   coverage of these live-server flows yet beyond the manual `pnpm run test:smoke` sweep.
 
-## Contributing
+## Development
 
-Issues and PRs welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: it covers the layer
-rule, the two non-obvious conventions (path-guarded `./data` access and lazy-requires for cycle
-breaking), and how to run the QA sweep.
+Oxyx is a solo project maintained by doubleangels. For development guidelines, the layering rule,
+path safety, and quality checks, see [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/architecture.md`](docs/architecture.md).
 
-Stuck rather than contributing? [`SUPPORT.md`](SUPPORT.md) says where to ask and what to expect.
-Found a security problem? [`SECURITY.md`](SECURITY.md) has a private reporting link, so please don't
-open a public issue for that one.
-
-MSM is free and stays free: every feature lives in the MIT build, and nothing moves behind a payment.
-If it saves you time and you want to chip in towards the domain, the machines it's tested on, and the
-hours behind releases, there's a Sponsor button at the top of this page. It's optional, and it buys
-no priority over anyone else's bug.
+For support or reporting security concerns, see [`SUPPORT.md`](SUPPORT.md) and [`SECURITY.md`](SECURITY.md).
 
 ## License
 

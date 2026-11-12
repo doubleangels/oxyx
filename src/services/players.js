@@ -453,7 +453,7 @@ async function banPlayer(serverId, name, reason, { running = false, actor = 'sys
       uuid: who.uuid,
       name: who.name,
       created: banTimestamp(),
-      source: 'Minecraft Server Manager',
+      source: 'Oxyx',
       expires,
       reason,
     });
@@ -507,7 +507,7 @@ async function banIp(
     list.push({
       ip,
       created: banTimestamp(),
-      source: 'Minecraft Server Manager',
+      source: 'Oxyx',
       expires,
       reason,
       player: linkedPlayer,

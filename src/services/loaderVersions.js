@@ -128,7 +128,7 @@ async function paperBuilds(mc, { channel = 'default' } = {}) {
   const data = await cachedJson(
     `loader:paper3:${mc}`,
     `https://fill.papermc.io/v3/projects/paper/versions/${mc}/builds`,
-    { headers: { 'User-Agent': 'MinecraftServerManager (self-hosted panel; github.com/anefzaoui)' } }
+    { headers: { 'User-Agent': 'Oxyx (self-hosted panel; github.com/doubleangels)' } }
   );
   const wanted = PAPER_CHANNEL_MAP[channel] || PAPER_CHANNEL_MAP.default;
   const builds = (Array.isArray(data) ? data : []).filter((b) => b && wanted.has(String(b.channel).toUpperCase()));

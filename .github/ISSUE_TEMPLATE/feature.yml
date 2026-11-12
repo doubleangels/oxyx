@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest something MSM should be able to do
+description: Suggest something Oxyx should be able to do
 labels: ['enhancement']
 body:
   - type: markdown

@@ -106,7 +106,7 @@ somewhere designed for it, such as [mclo.gs](https://mclo.gs), rather than into 
 Minecraft version, the loader, the pack and its version, and how much heap the server has. A report
 with those four facts gets answered in one reply; without them it takes five.
 
-## In Minecraft Server Manager
+## In Oxyx
 
 Crashes are detected from the container's own exit, so a server that dies at three in the morning is
 recorded with its log excerpt rather than found the next day. The usual suspects on this page (the

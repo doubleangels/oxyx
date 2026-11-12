@@ -9,7 +9,7 @@ body:
         can and leave the rest. If it turns out to be a setup question rather than a bug, you will
         get an answer either way.
 
-        Found a security problem? Please use [private reporting](https://github.com/anefzaoui/minecraft-server-manager/security/advisories/new) instead of this form.
+        Found a security problem? Please use [private reporting](https://github.com/doubleangels/oxyx/security/advisories/new) instead of this form.
   - type: textarea
     id: what-happened
     attributes:
@@ -39,7 +39,7 @@ body:
   - type: dropdown
     id: install
     attributes:
-      label: How you run MSM
+      label: How you run Oxyx
       options:
         - Docker image (ghcr.io)
         - From source (pnpm start or pnpm run dev)

@@ -58,7 +58,7 @@ function generateSecret() {
 }
 
 /** otpauth:// URI for QR/manual enrollment - issuer + account label, standard params. */
-function buildOtpauthUrl(secret, { issuer = 'Minecraft Server Manager', account }) {
+function buildOtpauthUrl(secret, { issuer = 'Oxyx', account }) {
   const label = encodeURIComponent(`${issuer}:${account}`);
   // Build the query with encodeURIComponent, NOT URLSearchParams: the latter
   // form-encodes a space as '+', but per RFC 3986 a '+' in a URI query is a

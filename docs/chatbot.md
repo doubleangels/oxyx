@@ -83,7 +83,7 @@ Notes for whoever looks at this next (human or AI), so the size is not a surpris
 
 All settings and retained transcripts live in the panel SQLite database at `/data/panel.db` inside
 the panel container. With the standard Compose mount, the host path is
-`${DATA_DIR_HOST}/panel.db` (for example `/opt/msm/data/panel.db`). Relevant tables are
+`${DATA_DIR_HOST}/panel.db` (for example `/opt/oxyx/data/panel.db`). Relevant tables are
 `wizard_configs`, `wizard_transcripts`, and `wizard_outreach`; power audits are rows in the `events`
 table with type `wizard-power`. The optional LLM API key is AES-256-GCM encrypted with the panel's
 at-rest key, `.secret-key` in the data folder (separate from `SESSION_SECRET`).

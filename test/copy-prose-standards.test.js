@@ -114,7 +114,7 @@ const titleCase = (text) =>
     .join('');
 
 const PROPER_NOUNS =
-  'Minecraft Mojang Docker Java RCON Modrinth CurseForge BlueMap Discord Fabric Forge NeoForge Quilt Paper Purpur Bedrock Geyser'.split(
+  'Oxyx Minecraft Mojang Docker Java RCON Modrinth CurseForge BlueMap Discord Fabric Forge NeoForge Quilt Paper Purpur Bedrock Geyser'.split(
     ' '
   );
 const PROPER_RE = new RegExp(

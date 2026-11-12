@@ -730,14 +730,14 @@ leaving the panel or reaching for the CLI.
 
 ## [0.9.0] - 2026-08-09
 
-Containerized deployment (closes [#1](https://github.com/anefzaoui/minecraft-server-manager/issues/1)):
+Containerized deployment (closes [#1](https://github.com/doubleangels/oxyx/issues/1)):
 the panel itself can now run as a Docker container, with a pre-built multi-arch image on GHCR and an
 official compose file, so no clone-and-build is needed for Portainer/Dockge-style hosts.
 
 ### Added
 
 - **Pre-built image on GHCR**: a new `Docker` workflow publishes
-  `ghcr.io/anefzaoui/minecraft-server-manager` (`:latest` + immutable `:v<version>`) for
+  `ghcr.io/doubleangels/oxyx` (`:latest` + immutable `:v<version>`) for
   linux/amd64 and linux/arm64 on every push to main.
 - **`Dockerfile`**: two-stage build: full install + Tailwind CSS compile in the build stage,
   production-only `node_modules` in the runtime stage (`views/`, `src/`, and the built `public/`

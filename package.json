@@ -1,19 +1,19 @@
 {
-  "name": "minecraft-server-manager",
+  "name": "oxyx",
   "version": "0.14.1",
-  "description": "Minecraft Server Manager: a complete control panel for itzg/docker-minecraft-server",
+  "description": "Oxyx: a complete control panel for itzg/docker-minecraft-server",
   "private": true,
   "license": "MIT",
-  "author": "anefzaoui",
+  "author": "doubleangels",
   "type": "commonjs",
   "main": "src/server.js",
-  "homepage": "https://github.com/anefzaoui/minecraft-server-manager#readme",
+  "homepage": "https://github.com/doubleangels/oxyx#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anefzaoui/minecraft-server-manager.git"
+    "url": "git+https://github.com/doubleangels/oxyx.git"
   },
   "bugs": {
-    "url": "https://github.com/anefzaoui/minecraft-server-manager/issues"
+    "url": "https://github.com/doubleangels/oxyx/issues"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -39,7 +39,6 @@
     "db:migrate": "node scripts/migrate.js",
     "seed:servers": "node scripts/seed-fake-servers.js",
     "seed:players": "node scripts/seed-players.js",
-    "contributors": "node scripts/contributors-svg.js",
     "test:deploy": "docker run --rm -v \"$PWD:/repo\" -w /repo ubuntu:24.04 bash test/deploy/install-scenarios.sh",
     "test:deploy:real": "bash test/deploy/e2e-real.sh"
   },

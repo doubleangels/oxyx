@@ -59,26 +59,26 @@ check() {
   fi
 }
 
-check 'the panel container is running' 'docker ps --filter name=minecraft-server-manager --filter status=running --format "{{.Names}}" | grep -q minecraft-server-manager'
-check 'Docker reports it healthy' '[ "$(docker inspect --format "{{.State.Health.Status}}" minecraft-server-manager)" = healthy ]'
+check 'the panel container is running' 'docker ps --filter name=oxyx --filter status=running --format "{{.Names}}" | grep -q oxyx'
+check 'Docker reports it healthy' '[ "$(docker inspect --format "{{.State.Health.Status}}" oxyx)" = healthy ]'
 check '/healthz answers 200' 'curl -fsS -o /dev/null -w "%{http_code}" http://127.0.0.1:25564/healthz | grep -q 200'
 check 'the login page renders' 'curl -fsS http://127.0.0.1:25564/login | grep -qi "sign in\|setup"'
-check 'the data directory is on the host side of the mount' '[ -d /opt/msm/data ]'
-check 'the panel wrote into it' '[ -n "$(ls -A /opt/msm/data 2>/dev/null)" ]'
-check 'DATA_DIR_HOST reached the container' 'docker inspect --format "{{range .Config.Env}}{{println .}}{{end}}" minecraft-server-manager | grep -q "^DATA_DIR_HOST=/opt/msm/data$"'
-check 'the docker socket is mounted' 'docker inspect --format "{{range .Mounts}}{{println .Source}}{{end}}" minecraft-server-manager | grep -q "^/var/run/docker.sock$"'
+check 'the data directory is on the host side of the mount' '[ -d /opt/oxyx/data ]'
+check 'the panel wrote into it' '[ -n "$(ls -A /opt/oxyx/data 2>/dev/null)" ]'
+check 'DATA_DIR_HOST reached the container' 'docker inspect --format "{{range .Config.Env}}{{println .}}{{end}}" oxyx | grep -q "^DATA_DIR_HOST=/opt/oxyx/data$"'
+check 'the docker socket is mounted' 'docker inspect --format "{{range .Mounts}}{{println .Source}}{{end}}" oxyx | grep -q "^/var/run/docker.sock$"'
 
 printf '\n==> Re-running the installer (upgrade path).\n'
 run 'NO_COLOR=1 /tmp/install.sh --skip-docker --health-timeout 240' >/dev/null
-check 'still healthy after a second run' '[ "$(docker inspect --format "{{.State.Health.Status}}" minecraft-server-manager)" = healthy ]'
-check 'no stray backup file, because nothing changed' '[ ! -f /opt/msm/docker-compose.yml.bak ]'
+check 'still healthy after a second run' '[ "$(docker inspect --format "{{.State.Health.Status}}" oxyx)" = healthy ]'
+check 'no stray backup file, because nothing changed' '[ ! -f /opt/oxyx/docker-compose.yml.bak ]'
 
 printf '\n==> Claiming the admin account through the first-run gate.\n'
 # The panel is on an exposed bind here, so it demands the one-time PIN it wrote
 # to its own log. Posting without one must be refused, and the installer is
 # expected to have surfaced the PIN in its output.
 check 'setup without the PIN is refused' 'test "$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"e2e-Passw0rd-123\"}" http://127.0.0.1:25564/setup)" = 403'
-PIN="$(run 'docker logs minecraft-server-manager 2>&1 | grep -o "\"pin\":\"[0-9]\{6\}\"" | tail -1 | grep -o "[0-9]\{6\}"' | tr -d '\r')"
+PIN="$(run 'docker logs oxyx 2>&1 | grep -o "\"pin\":\"[0-9]\{6\}\"" | tail -1 | grep -o "[0-9]\{6\}"' | tr -d '\r')"
 if [ -n "$PIN" ]; then
   printf '  ok   the panel published a setup PIN (%s)\n' "$PIN"
 else
@@ -88,7 +88,7 @@ fi
 if run "curl -fsS -c /tmp/j -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"e2e-Passw0rd-123\",\"pin\":\"$PIN\"}' http://127.0.0.1:25564/setup >/dev/null"; then
   printf '  ok   setup with the PIN created the admin account\n'
   check 'the API answers as that admin' 'curl -fsS -b /tmp/j http://127.0.0.1:25564/api/servers/live | grep -q "\"ok\":true"'
-  check 'the panel DB landed in the data directory' '[ -f /opt/msm/data/panel.db ]'
+  check 'the panel DB landed in the data directory' '[ -f /opt/oxyx/data/panel.db ]'
 else
   printf '  FAIL setup with the PIN\n'
   fail=1
@@ -96,10 +96,10 @@ fi
 
 printf '\n==> Uninstalling.\n'
 run 'NO_COLOR=1 /tmp/install.sh --uninstall --yes' >/dev/null
-check 'the panel container is gone' '! docker ps -a --format "{{.Names}}" | grep -q minecraft-server-manager'
-check 'the data directory survived' '[ -d /opt/msm/data ]'
+check 'the panel container is gone' '! docker ps -a --format "{{.Names}}" | grep -q oxyx'
+check 'the data directory survived' '[ -d /opt/oxyx/data ]'
 run 'NO_COLOR=1 /tmp/install.sh --uninstall --purge --yes' >/dev/null 2>&1 || true
-check '--purge removed the data' '[ ! -d /opt/msm/data ]'
+check '--purge removed the data' '[ ! -d /opt/oxyx/data ]'
 
 printf '\n'
 if [ "$fail" -eq 0 ]; then

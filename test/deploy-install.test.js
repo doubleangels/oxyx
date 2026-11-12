@@ -92,7 +92,7 @@ test('render_compose produces valid YAML that matches the flags', () => {
   const doc = yaml.load(out);
   const panel = doc.services.panel;
   assert.equal(panel.image, 'ghcr.io/example/panel:v1.2.3');
-  assert.equal(panel.container_name, 'minecraft-server-manager');
+  assert.equal(panel.container_name, 'oxyx');
   assert.equal(panel.restart, 'unless-stopped');
   assert.deepEqual(panel.ports, ['127.0.0.1:8080:25564'], 'host side follows --bind and --port');
   assert.ok(panel.extra_hosts.includes('host.docker.internal:host-gateway'), 'live map fallback route');
@@ -173,7 +173,7 @@ test('the installer refuses to run on a machine it does not support', () => {
   const result = shStatus('uname() { printf "Darwin"; }; require_linux');
   assert.equal(result.status, 1);
   assert.match(result.out, /for Linux hosts/);
-  assert.match(result.out, /run MSM from source/, 'points at the alternative');
+  assert.match(result.out, /run Oxyx from source/, 'points at the alternative');
   const arch = shStatus('uname() { printf "riscv64"; }; detect_arch');
   assert.equal(arch.status, 1);
   assert.match(arch.out, /unsupported architecture riscv64/);

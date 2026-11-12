@@ -72,7 +72,9 @@ test('validateOverrides rejects the reserved pseudo-networks host and none', asy
   await assert.rejects(() => dockerSpec.validateOverrides({ networkName: 'none' }), /reserved and cannot/);
 });
 
-test('validateOverrides reserves the msm- prefix (would let a name shadow another server’s container)', async () => {
+test('validateOverrides reserves the oxyx- and msm- prefixes (would let a name shadow another server’s container)', async () => {
+  await assert.rejects(() => dockerSpec.validateOverrides({ containerName: 'oxyx-hijack' }), /reserved/);
+  await assert.rejects(() => dockerSpec.validateOverrides({ containerName: 'OXYX-hijack' }), /reserved/);
   await assert.rejects(() => dockerSpec.validateOverrides({ containerName: 'msm-hijack' }), /reserved/);
   await assert.rejects(() => dockerSpec.validateOverrides({ containerName: 'MSM-hijack' }), /reserved/);
 });

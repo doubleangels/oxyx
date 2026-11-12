@@ -73,11 +73,13 @@ async function validateOverrides(
       `Container name "${containerName}" is invalid. Use letters, digits, "_", ".", "-", starting with a letter or digit, up to 63 characters.`
     );
   }
-  // getContainer() resolves servers WITHOUT a custom name as msm-<id> - a
+  // getContainer() resolves servers WITHOUT a custom name as oxyx-<id> (or legacy msm-<id>) - a
   // custom name in that namespace could shadow another server's container and
   // route every lifecycle action (stop, kill, exec…) to the wrong instance.
-  if (containerName != null && /^msm-/i.test(containerName)) {
-    errors.push(`Container name "${containerName}" is reserved. The "msm-" prefix is used for the panel's own naming.`);
+  if (containerName != null && /^(oxyx|msm)-/i.test(containerName)) {
+    errors.push(
+      `Container name "${containerName}" is reserved. The "oxyx-" and "msm-" prefixes are used for the panel's own naming.`
+    );
   }
 
   // A network that does not exist yet is fine: createContainer now creates

@@ -1,4 +1,4 @@
-// Minecraft Server Manager client entry. Shared behaviors live in ./lib/* - every page gets
+// Oxyx client entry. Shared behaviors live in ./lib/* - every page gets
 // the same modals, tooltips, toasts, dropdowns, and custom selects.
 
 import { toast } from './lib/toast.js';
@@ -95,6 +95,7 @@ for (const el of document.querySelectorAll('[data-ts], [data-ts-ago], [data-ts-i
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     try {
+      localStorage.setItem('oxyx-theme', next);
       localStorage.setItem('msm-theme', next);
     } catch {}
     sync();

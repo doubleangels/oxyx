@@ -50,7 +50,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
   reveal('[data-install-app]', false);
-  toast('Installed. Open Minecraft Server Manager from your home screen or app list.');
+  toast('Installed. Open Oxyx from your home screen or app list.');
 });
 if (!standalone && (isIos || coarse || !secure)) reveal('[data-install-app]');
 

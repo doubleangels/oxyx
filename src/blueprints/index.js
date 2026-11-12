@@ -5,7 +5,7 @@
 // (identity, env, resources, pinned pack, custom-mod overlay, config files,
 // optionally embedded jars and world). Export produces the zip + a DB row;
 // import validates the manifest (zod, zip-slip-guarded) and reproduces the
-// server on any Minecraft Server Manager install. Secrets are never written to a blueprint.
+// server on any Oxyx install. Secrets are never written to a blueprint.
 
 const httpError = require('../utils/httpError');
 const fs = require('node:fs');
@@ -66,7 +66,7 @@ const KNOWN_TYPES = new Set([
   'CURSEFORGE',
 ]);
 
-// ---- Manifest schema (msm: 1) ----
+// ---- Manifest schema (oxyx: 1 / msm: 1) ----
 
 const overlayEntrySchema = z.object({
   name: z.string().min(1).max(200),
@@ -85,51 +85,54 @@ const overlayEntrySchema = z.object({
     .default(null),
 });
 
-const manifestSchema = z.object({
-  msm: z.literal(1),
-  name: z.string().trim().min(1).max(120),
-  createdAt: z.string().max(40),
-  panelVersion: z.string().max(20),
-  notes: z.string().max(4000).default(''),
-  identity: z.object({
-    name: z.string().trim().min(1).max(80),
-    description: z.string().max(4000).default(''),
-    icon: z.string().max(64).default('grass'),
-    accent: z
-      .string()
-      .regex(/^#[0-9a-fA-F]{6}$/)
-      .default('#3fa62b'),
-    tags: z.array(z.string().max(24)).max(16).default([]),
-  }),
-  config: z.object({
-    type: z.string().trim().min(1).max(32),
-    mcVersion: z.string().trim().min(1).max(32),
-    javaTag: z.string().max(16).default(''),
-    env: z.record(z.string(), z.string()).default({}),
-  }),
-  resources: z.object({
-    heapMb: z.number().int().min(512).max(262144),
-    containerMemoryMb: z.number().int().min(1024).max(524288),
-    cpus: z.number().min(0).max(128),
-    diskQuotaGb: z.number().min(0).max(16384),
-    quotaStrict: z.boolean().default(false),
-    updatePolicy: z.enum(['manual', 'notify', 'auto']).default('manual'),
-  }),
-  pack: z
-    .object({
-      platform: z.enum(['curseforge', 'modrinth', 'ftb', 'gtnh']),
-      projectRef: z.string().min(1).max(400),
-      projectName: z.string().max(200).default(''),
-      versionId: z.string().min(1).max(60),
-      versionName: z.string().max(200).default(''),
-    })
-    .nullable()
-    .default(null),
-  overlay: z.array(overlayEntrySchema).max(500).default([]),
-  configFiles: z.array(z.string().min(1).max(300)).max(2000).default([]),
-  embedFiles: z.boolean().default(false),
-  world: z.boolean().default(false),
-});
+const manifestSchema = z
+  .object({
+    oxyx: z.literal(1).optional(),
+    msm: z.literal(1).optional(),
+    name: z.string().trim().min(1).max(120),
+    createdAt: z.string().max(40),
+    panelVersion: z.string().max(20),
+    notes: z.string().max(4000).default(''),
+    identity: z.object({
+      name: z.string().trim().min(1).max(80),
+      description: z.string().max(4000).default(''),
+      icon: z.string().max(64).default('grass'),
+      accent: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default('#3fa62b'),
+      tags: z.array(z.string().max(24)).max(16).default([]),
+    }),
+    config: z.object({
+      type: z.string().trim().min(1).max(32),
+      mcVersion: z.string().trim().min(1).max(32),
+      javaTag: z.string().max(16).default(''),
+      env: z.record(z.string(), z.string()).default({}),
+    }),
+    resources: z.object({
+      heapMb: z.number().int().min(512).max(262144),
+      containerMemoryMb: z.number().int().min(1024).max(524288),
+      cpus: z.number().min(0).max(128),
+      diskQuotaGb: z.number().min(0).max(16384),
+      quotaStrict: z.boolean().default(false),
+      updatePolicy: z.enum(['manual', 'notify', 'auto']).default('manual'),
+    }),
+    pack: z
+      .object({
+        platform: z.enum(['curseforge', 'modrinth', 'ftb', 'gtnh']),
+        projectRef: z.string().min(1).max(400),
+        projectName: z.string().max(200).default(''),
+        versionId: z.string().min(1).max(60),
+        versionName: z.string().max(200).default(''),
+      })
+      .nullable()
+      .default(null),
+    overlay: z.array(overlayEntrySchema).max(500).default([]),
+    configFiles: z.array(z.string().min(1).max(300)).max(2000).default([]),
+    embedFiles: z.boolean().default(false),
+    world: z.boolean().default(false),
+  })
+  .refine((data) => data.oxyx === 1 || data.msm === 1, { message: 'Missing blueprint schema marker.' });
 
 // ---- Export ----
 
@@ -167,6 +170,7 @@ async function exportBlueprint(serverId, options = {}, { actor = 'system' } = {}
   }
 
   const manifest = {
+    oxyx: 1,
     msm: 1,
     name: server.display_name,
     sourceServerId: server.id,
@@ -277,7 +281,7 @@ async function exportBlueprint(serverId, options = {}, { actor = 'system' } = {}
 async function importPreview(zipPath) {
   const { entries, texts } = await readZipIndex(zipPath, { textEntry: (n) => n === 'manifest.json' });
   const manifestText = texts.get('manifest.json') || null;
-  if (!manifestText) throw httpError(400, 'Not a Minecraft Server Manager blueprint: manifest.json is missing.');
+  if (!manifestText) throw httpError(400, 'Not an Oxyx blueprint: manifest.json is missing.');
 
   let raw;
   try {
@@ -724,6 +728,7 @@ async function seedStarters() {
 
 function paperStarterManifest() {
   return {
+    oxyx: 1,
     msm: 1,
     name: 'Optimized Paper Survival',
     createdAt: new Date().toISOString(),
@@ -766,6 +771,7 @@ function fabricStarterManifest() {
     sha256: null,
   });
   return {
+    oxyx: 1,
     msm: 1,
     name: 'Fabric Performance Base',
     createdAt: new Date().toISOString(),

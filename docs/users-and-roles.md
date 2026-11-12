@@ -73,7 +73,7 @@ A few things are restricted to admins on purpose:
 - **The [public API](public-api.md)**: enabling `/api/v1` and creating, scoping, or revoking its read-only Bearer tokens.
 - **Advanced Docker overrides**: custom container name, extra port publishes, and bind mounts. A bind mount can map any host path into a container, and combined with the panel's Docker access that's effectively root on the host. These fields only appear for admins.
 
-Custom container names also can't live in the panel's own `msm-` namespace, so a hand-named container can never shadow another server's and misdirect a stop or command to the wrong instance.
+Custom container names also can't live in the panel's own `oxyx-` (or legacy `msm-`) namespace, so a hand-named container can never shadow another server's and misdirect a stop or command to the wrong instance.
 
 ## Managing accounts
 
