@@ -4,7 +4,7 @@
 
 Over time a world spreads out: every place a player has ever walked, flown, or
 been carried by an Ender pearl leaves generated chunks on disk, even if nobody
-ever went back. **Shrink world** removes the chunks that almost nobody has spent
+ever went back. **Shrink World** removes the chunks that almost nobody has spent
 time in, so the world takes less space. Minecraft rebuilds a removed area from
 the world seed the moment someone travels there again, so this is safe for
 land nobody is using, but anything a player _built_ in a spot they barely stood
@@ -57,5 +57,5 @@ server is running, the backup still runs and the shrink is skipped with a note.
 
 Scheduled backups have the same option: in the schedule editor, choose the
 **Backup** task and tick **"Shrink the World After Each Backup"**. Pair it with
-a **Stop server** schedule a few minutes earlier if you want it to run
+a **Stop Server** schedule a few minutes earlier if you want it to run
 unattended.

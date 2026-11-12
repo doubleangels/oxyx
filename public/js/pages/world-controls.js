@@ -44,7 +44,7 @@ function init(serverId, running) {
   }
 
   // Only ask the server to read the gamerules whose chips are actually on
-  // screen - the "Show all world rules" section stays unqueried until it is
+  // screen - the "Show All World Rules" section stays unqueried until it is
   // opened. Each read is an RCON round trip, so this keeps the ~30s poll light.
   function visibleRules() {
     const seen = new Set();
@@ -228,7 +228,7 @@ function init(serverId, running) {
     }
   });
 
-  // Opening "Show all world rules" pulls in a batch of rules we haven't read
+  // Opening "Show All World Rules" pulls in a batch of rules we haven't read
   // yet - refresh right away so their chips aren't blank.
   root.querySelector('[data-wc-all]')?.addEventListener('toggle', (e) => {
     if (e.target.open) refreshState();

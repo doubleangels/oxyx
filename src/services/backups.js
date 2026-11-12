@@ -265,7 +265,7 @@ async function restoreBackupCore(serverId, backupId, { actor = 'system', skipSaf
   if (info.exists && ['running', 'starting', 'unhealthy'].includes(info.status)) {
     throw httpError(
       409,
-      'The server did not stop, so the restore was cancelled to avoid corrupting the live world. Stop it manually and try again.'
+      'The server did not stop, so the restore was canceled to avoid corrupting the live world. Stop it manually and try again.'
     );
   }
 

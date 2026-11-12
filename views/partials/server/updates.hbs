@@ -85,7 +85,7 @@
         Mods That Could Not Be Identified
       </summary>
       <p class="mt-2 max-w-prose text-xs text-ink-soft">
-        Neither Modrinth nor CurseForge recognises these files, so there is no way to tell which Minecraft
+        Neither Modrinth nor CurseForge recognizes these files, so there is no way to tell which Minecraft
         versions they support. While any of them are installed, this server is never offered a one-click
         Minecraft version update.
       </p>
@@ -106,7 +106,7 @@
         Mods That Could Not Be Checked
       </summary>
       <p class="mt-2 max-w-prose text-xs text-ink-soft">
-        These are recognised, but they come from a place that publishes no list of which Minecraft
+        These are recognized, but they come from a place that publishes no list of which Minecraft
         versions each build is for: GitHub Releases, Hangar, SpigotMC, or a project that has since been
         taken down. The panel will not guess on their behalf, so this server is not offered a one-click
         Minecraft version update while they are installed.
@@ -129,7 +129,7 @@
     <div class="grid gap-2" id="compat-versions">
       {{#each compatVersions}}
         <details class="card group" data-compat-version="{{version}}">
-          <summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 [&::-webkit-details-marker]:hidden">
+          <summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 [&::-webkit-details-marker]:hidden" data-summary-row>
             <span class="shrink-0 text-ink-faint transition group-open:rotate-90">{{{icon 'chevron-right' 'size-4'}}}</span>
             <span class="font-mono text-sm font-semibold">{{version}}</span>
             {{#if (eq status 'ready')}}

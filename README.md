@@ -238,7 +238,7 @@ that are fiddly elsewhere are first-class here:
 - **vs [Crafty Controller](https://craftycontrol.com/)**: same free, self-hosted spirit, but every
   server is a clean, resource-capped **Docker container** rather than a bare process, with per-server
   disk quotas, a one-click live map, and portable `.mcserver.zip` blueprints.
-- **vs [AMP](https://cubecoders.com/AMP)**: no per-machine licence and no paid tiers. **MIT-licensed
+- **vs [AMP](https://cubecoders.com/AMP)**: no per-machine license and no paid tiers. **MIT-licensed
   and free**, with the itzg image's entire environment-variable surface exposed and explained in plain
   English.
 
@@ -297,7 +297,7 @@ Not affiliated with any of them.
   direct JSON edits while stopped ("applies on start"). Teleport by coordinates, to a player, or to
   the nearest biome.
 - **Backups & schedules**: save-safe archive/restore with free-space preflight and retention per
-  backup reason, plus optional age and total-size limits. Admins set them panel-wide in **Settings →
+  backup reason, plus optional age and total-size limits. Admins set them panel-wide in **Panel Settings →
   Backup Retention** and per server under **Retention for This Server** on its Backups tab; saving
   shows what would be removed and offers **Remove Now** or **From Next Backup**. Every new server is
   seeded a daily backup automatically, each archive is integrity-checked before it's recorded, and the
@@ -551,7 +551,7 @@ for three minutes after "Done" (each figure moved by under 50 MB in that time):
 
 Turning off pre-touch only delays the fill: Java still works through the whole heap over time and
 never hands it back (a Forge 1.20.1 server with a 4 GB heap and no preset read 3.7 GB after a week
-with nobody on). A smaller **Initial heap** (Resources card on Settings → Configuration) is the setting that changes what Java asks for, so that
+with nobody on). A smaller **Initial Heap** (Resources card on Settings → Configuration) is the setting that changes what Java asks for, so that
 is the lever if you want idle memory to follow real use; the trade-off is that Aikar's flags
 recommend equal heaps for the steadiest tick times. Java also needs memory outside the heap: about
 0.5 GB on vanilla, 1.5-2 GB on a large modpack, which is what the headroom above is for.
@@ -688,7 +688,7 @@ The core lifecycle is solid, but several features have known limitations or are 
   roof, or an exposed cliff. It's **online-only**, runs **one search at a time per server** (a
   `/locate`/`spreadplayers` sweep briefly stalls the server's main thread), seeds distance from the
   player's **last-saved** position (can be stale), and its point distribution clusters toward the
-  centre rather than being area-uniform.
+  center rather than being area-uniform.
 
 - **Structure finding**: nearest-structure teleport uses a bundled vanilla list plus a best-effort
   scan of the server's structure tags for modded content. Each structure's home dimension is a static

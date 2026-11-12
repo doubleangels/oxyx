@@ -1,6 +1,6 @@
 'use strict';
 
-// Fleet schedules ("Back up all servers", "Restart all running servers"): they
+// Fleet schedules ("Back Up All Servers", "Restart All Running Servers"): they
 // visit every eligible server in turn, isolate per-server failures, report the
 // failures at the end, and are admin-only to create.
 
@@ -165,6 +165,6 @@ test('only an admin can create a fleet schedule; others get 403, and the form hi
   // delete so the label cannot come from the schedule list rows.
   const adminPage = await app.req('GET', '/schedules', { cookie: adminCookie, headers: { Accept: 'text/html' } });
   const opPage = await app.req('GET', '/schedules', { cookie: opCookie, headers: { Accept: 'text/html' } });
-  assert.match(adminPage.text, /Back up all servers/);
-  assert.doesNotMatch(opPage.text, /Back up all servers/);
+  assert.match(adminPage.text, /Back Up All Servers/);
+  assert.doesNotMatch(opPage.text, /Back Up All Servers/);
 });

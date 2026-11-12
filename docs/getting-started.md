@@ -8,7 +8,7 @@ The first time you open the panel, a short setup wizard walks you through it:
 
 1. **System Check** makes sure Docker is reachable, Node.js is new enough, and the data folder is writable. If Docker isn't running yet you can still continue; creating and starting servers waits until it is.
 2. **Create Your Admin Account**. This is the only account that exists until you add more, and it has full control. Pick a username (2 to 32 characters) and a password of at least 8 characters. You're signed in as soon as it's created.
-3. **Panel Configuration** (optional): a public domain to show players in connect addresses, a CurseForge API key, and your time zone. All of it can be changed later in **Settings**.
+3. **Panel Configuration** (optional): a public domain to show players in connect addresses, a CurseForge API key, and your time zone. All of it can be changed later in **Panel Settings**.
 
 The last step offers **Create a Server** or **Go to the Dashboard**.
 
@@ -49,7 +49,7 @@ Made for thumbs:
 - **Library** opens on **Modpacks**, with **Worlds** and **Blueprints** as tabs at the top; **Activity** has **Health** as a tab the same way.
 - The button that finishes a form stays pinned to the bottom of the screen: **Save Changes** on Configuration, **Create & Start** on Create Server, and **Save** on Discord, Status Page and Chatbot.
 - Dialogs open as sheets from the bottom edge with full-width buttons.
-- The keyboard doesn't capitalise or "correct" player names, commands, file names, addresses or searches, and its Enter key reads **Send** in the console and **Search** in search boxes.
+- The keyboard doesn't capitalize or "correct" player names, commands, file names, addresses or searches, and its Enter key reads **Send** in the console and **Search** in search boxes.
 - The console's command box and the chat message box stay pinned at the bottom of the screen, like a chat app, and the log fills the space above. The console's filters, Announce, Keep Screen On and Download fold under **Options**. The console keeps the command box above the keyboard, and shows a **New Lines** button when output arrives while you're scrolled up. **Keep Screen On** stops the phone from locking while you watch it.
 - **Share** next to **Copy Address** on a server's Overview, and next to **Copy Invite Text** on **Players → Invites**, opens the phone's share sheet.
 - If the panel stops answering (Wi-Fi drops, the panel restarts) a **Reconnecting…** banner says so, and goes away by itself once it answers again.

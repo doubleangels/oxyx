@@ -119,7 +119,7 @@ const STATUS_META = {
   updating: { label: 'Updating', color: 'diamond', pulse: true },
   stopped: { label: 'Stopped', color: 'stone', pulse: false },
   crashed: { label: 'Crashed', color: 'redstone', pulse: false },
-  'over-quota': { label: 'Over quota', color: 'redstone', pulse: false },
+  'over-quota': { label: 'Over Quota', color: 'redstone', pulse: false },
 };
 const STATUS_TEXT = {
   grass: 'text-ok',
@@ -517,7 +517,7 @@ function createApp() {
 
   // 404 + error pages (kept friendly; detailed errors go to the server log only)
   app.use((req, res) =>
-    res.status(404).render('error', { title: 'Not found', code: 404, message: 'That page does not exist.' })
+    res.status(404).render('error', { title: 'Not Found', code: 404, message: 'That page does not exist.' })
   );
 
   app.use((err, req, res, next) => {

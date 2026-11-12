@@ -10,11 +10,11 @@ The dashboard is your home base: every server, its live status, and a running fe
 
 If Docker can't be reached, that warning comes first, above everything else. Then, across the top:
 
-- **Servers online**: how many of your servers are currently running, out of the total, with a count of the ones in any other state (stopped, crashed, starting…) right under it.
-- **Players connected**: the total player count across all running servers.
+- **Servers Online**: how many of your servers are currently running, out of the total, with a count of the ones in any other state (stopped, crashed, starting…) right under it.
+- **Players Connected**: the total player count across all running servers.
 - **Docker**: whether the panel can reach the Docker daemon, and its version.
 
-A second row adds **Memory allotted** (and how much is in use), **Storage used** across all server data folders, **Health · 24h** (crashes, out-of-memory stops, and auto-restarts in the last day), and **Updates** split into mods and server-level updates ([see Updates](updates.md)).
+A second row adds **Memory Allotted** (and how much is in use), **Storage Used** across all server data folders, **Health · 24h** (crashes, out-of-memory stops, and auto-restarts in the last day), and **Updates** split into mods and server-level updates ([see Updates](updates.md)).
 
 Your **Servers** come next, then the **Resource Overview** that charts every server's share of memory and CPU, then **Recent Activity**.
 

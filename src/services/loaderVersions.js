@@ -18,7 +18,7 @@ const mojang = require('./mojang');
 
 const TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_BUILDS = 40; // keep the dropdown sane; power users have the advanced env field
-const LATEST = { version: '', label: 'Latest (recommended)' };
+const LATEST = { version: '', label: 'Latest (Recommended)' };
 
 const ENV_KEY = {
   fabric: 'FABRIC_LOADER_VERSION',

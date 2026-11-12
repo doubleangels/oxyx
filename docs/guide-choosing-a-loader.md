@@ -33,7 +33,7 @@ modded server and a plugin server behind it rather than one hybrid.
 ## The plugin side
 
 **Paper** is the default answer. It is a fork of Spigot with years of performance work and a
-configuration file for nearly every behaviour that has ever annoyed an administrator. Vanilla plugins
+configuration file for nearly every behavior that has ever annoyed an administrator. Vanilla plugins
 from the Bukkit era mostly still run.
 
 **Purpur** is a fork of Paper with even more knobs, including gameplay ones. Take it if you want
@@ -42,7 +42,7 @@ those specific switches; otherwise Paper.
 **Vanilla** is worth running when the point is the unchanged game. It is slower with many players,
 and it has no permission system, so moderation is manual.
 
-Paper changes some vanilla behaviour by default in the name of performance. If a redstone contraption
+Paper changes some vanilla behavior by default in the name of performance. If a redstone contraption
 from a video does not work on your server, that is usually why, and it is usually a setting.
 
 ## The mod side

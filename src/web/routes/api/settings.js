@@ -34,7 +34,7 @@ router.get('/settings', (req, res) => {
   });
 });
 
-// ---- Panel self-update check ("Update MSM"). Admin-only, on-demand: the
+// ---- Panel self-update check ("Update Oxyx"). Admin-only, on-demand: the
 // Settings page never hits GitHub at render - the button triggers this GET.
 router.get(
   '/settings/panel-update',

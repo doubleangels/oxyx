@@ -149,7 +149,7 @@ test('the Settings page renders the control without ever calling GitHub', async 
   const spy = t.mock.method(githubApi, 'getReleases', async () => [RELEASE]);
   const r = await app.req('GET', '/settings', { cookie });
   assert.equal(r.status, 200);
-  assert.match(r.text, /id="msm-update-btn"/);
+  assert.match(r.text, /id="panel-update-btn"/);
   assert.match(r.text, new RegExp(`v${CURRENT.replace(/\./g, '\\.')}`));
   assert.equal(spy.mock.callCount(), 0, 'page render must not hit the network');
 });

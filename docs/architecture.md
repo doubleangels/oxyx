@@ -149,7 +149,7 @@ Cross-cutting:
   version list (one request per project, which is what keeps loader and version paired). The update
   checker offers only the newest version EVERY mod supports, and offers nothing at all when the
   answer cannot be established: no scan, a scan for a different version or loader, one that never
-  finished, or a jar neither registry recognises. Scans are manual only, and their progress and
+  finished, or a jar neither registry recognizes. Scans are manual only, and their progress and
   partial results live in `version_compat` (not in the in-memory `services/tasks.js`), so a refresh
   or a panel restart resumes instead of hanging on a spinner; `reconcileScans()` marks scans
   orphaned by a shutdown on the next boot.

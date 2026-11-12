@@ -8,7 +8,7 @@ The **Modpacks** page (and the **From Modpack** tab in the [creation wizard](ser
 
 ## Supported platforms
 
-- **CurseForge**: search by name. Needs a CurseForge API key (add it under **Settings → API Keys**).
+- **CurseForge**: search by name. Needs a CurseForge API key (add it under **Panel Settings → Mod Site Keys**).
 - **Modrinth**: search by name.
 - **FTB**: Feed The Beast packs, through the API only (a numeric pack ID plus an explicit version ID). The panel does not check FTB packs for updates yet.
 - **GT New Horizons**: the 1.7.10 expert pack, installed from GTNH's own release index. GTNH picks its Java runtime per pack version (2.8.0+ runs on **Java 25** via bundled lwjgl3ify patches, older releases on Java 21 or 17), and the wizard raises the server's RAM and disk to sensible minimums for it.

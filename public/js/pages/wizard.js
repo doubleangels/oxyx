@@ -723,7 +723,7 @@ function initModBrowser() {
       );
       const data = await res.json();
       if (!res.ok || !data.ok) return;
-      loaderVerSel.innerHTML = (data.builds || [{ version: '', label: 'Latest (recommended)' }])
+      loaderVerSel.innerHTML = (data.builds || [{ version: '', label: 'Latest (Recommended)' }])
         .map((b) => `<option value="${escapeHtml(b.version)}">${escapeHtml(b.label)}</option>`)
         .join('');
       loaderVerSel.value = data.default || '';
@@ -1094,7 +1094,7 @@ function initZipUpload() {
     selectedEl.querySelector('[data-role="remove"]').addEventListener('click', clear);
 
     // Jar zips that carry a complete, pre-installed loader (a locally-prepared
-    // server pack) can be created without MSM re-supplying loader versions: pin
+    // server pack) can be created without the panel re-supplying loader versions: pin
     // the container to the build that's already inside the archive.
     if (!isPack && p.native && p.native.isPreparedServer) {
       const nativeRow = document.createElement('label');

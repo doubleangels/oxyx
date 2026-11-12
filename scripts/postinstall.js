@@ -14,7 +14,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 // Some environments set this to skip lifecycle build steps.
-if (process.env.MSM_SKIP_POSTINSTALL === '1') {
+if (process.env.OXYX_SKIP_POSTINSTALL === '1' || process.env.MSM_SKIP_POSTINSTALL === '1') {
   process.exit(0);
 }
 

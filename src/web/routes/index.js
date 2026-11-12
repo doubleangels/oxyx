@@ -722,7 +722,7 @@ router.get(
         const other = total - accounted;
         if (other > 0)
           rows.push({
-            label: 'Config & other',
+            label: 'Config & Other',
             size: other,
             pct: Math.max(1, Math.round((other / total) * 100)),
             color: 'bg-ink-faint',

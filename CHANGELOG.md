@@ -20,6 +20,10 @@ its own dated entry.
 
 ### Fixed
 
+- **Consistent wording across the panel and docs.** Schedule task names, settings change rows and
+  other short labels now use Title Case, startup phase lines end in an ellipsis while they are in
+  progress, spelling is US English throughout, and leftover references to the old name are gone
+  from user-facing text and docs. Screenshots were retaken to match.
 - **Keyboard and screen reader basics.** Every page now starts with a Skip to Content link that
   jumps past the sidebar and top bar. Every table header declares which cells it labels, and text
   fields show the same focus outline as buttons instead of only a faint border change.

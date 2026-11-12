@@ -26,30 +26,34 @@ const PHASES = [
   {
     key: 'pack-download',
     re: /Downloading modpack|Downloading.*server pack|install-(curseforge|modrinth)/i,
-    label: 'Downloading modpack',
+    label: 'Downloading modpack…',
   },
-  { key: 'mods-download', re: /Downloaded mod file|Downloading mods|Downloaded \d+ files/i, label: 'Downloading mods' },
+  {
+    key: 'mods-download',
+    re: /Downloaded mod file|Downloading mods|Downloaded \d+ files/i,
+    label: 'Downloading mods…',
+  },
   {
     key: 'loader-install',
     re: /Running (the )?.*(NeoForge|Forge|Fabric|Quilt).*installer|installer for Minecraft/i,
-    label: 'Installing mod loader',
+    label: 'Installing mod loader…',
   },
   {
     key: 'server-download',
     re: /Downloading (Paper|Purpur|server jar)|Downloading.*minecraft_server/i,
-    label: 'Downloading server',
+    label: 'Downloading server…',
   },
   {
     key: 'mod-loading',
     re: /Loading \d+ mods|mixin|ModLauncher|Bootstrap|Fabric Loader|FML.*load/i,
-    label: 'Loading mods',
+    label: 'Loading mods…',
   },
   {
     key: 'world-gen',
     re: /Preparing level|Preparing start region|Preparing spawn|Generating keypair/i,
-    label: 'Generating world',
+    label: 'Generating world…',
   },
-  { key: 'done', re: /Done \([\d.]+s\)/, label: 'Finishing startup' },
+  { key: 'done', re: /Done \([\d.]+s\)/, label: 'Finishing startup…' },
 ];
 
 function classifyPhase(logTail) {
@@ -61,7 +65,7 @@ function classifyPhase(logTail) {
   if (!found) return null;
   if (found.key === 'mods-download') {
     const count = (logTail.match(/Downloaded mod file/g) || []).length;
-    return { key: found.key, label: count > 1 ? `Downloading mods (${count} in the last minute)` : found.label };
+    return { key: found.key, label: count > 1 ? `Downloading mods (${count} in the last minute)…` : found.label };
   }
   return { key: found.key, label: found.label };
 }
@@ -279,7 +283,7 @@ async function attach(serverId, containerId = null) {
     phaseInFlight = true;
     try {
       const tail = await fetchLogs(serverId, { tail: 40 });
-      entry.phase = classifyPhase(tail) || entry.phase || { key: 'boot', label: 'Starting up' };
+      entry.phase = classifyPhase(tail) || entry.phase || { key: 'boot', label: 'Starting up…' };
     } catch {
       /* container gone - sync() will detach */
     } finally {

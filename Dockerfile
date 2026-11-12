@@ -25,7 +25,7 @@ WORKDIR /app
 ARG PNPM_VERSION=11.25.0
 # The install-time postinstall hook (a CSS build) is skipped; `pnpm run build`
 # below builds CSS and JS explicitly, after the sources are copied.
-ENV MSM_SKIP_POSTINSTALL=1
+ENV OXYX_SKIP_POSTINSTALL=1
 # Pin pnpm directly instead of corepack (deprecated, being removed from Node).
 RUN npm install -g pnpm@${PNPM_VERSION}
 

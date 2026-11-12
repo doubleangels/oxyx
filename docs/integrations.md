@@ -24,11 +24,11 @@ Notifications are grouped into toggleable categories. All are on by default.
 
 | Category         | Events                                                    |
 | ---------------- | --------------------------------------------------------- |
-| **Start / stop** | Server started, server stopped                            |
+| **Start / Stop** | Server started, server stopped                            |
 | **Crashes**      | Crash, crash loop detected, new crash report              |
 | **Backups**      | Backup created, backup restored                           |
 | **Updates**      | Update applied, update rolled back, update failed         |
-| **Kicks / bans** | Player kicked, player banned                              |
+| **Kicks / Bans** | Player kicked, player banned                              |
 | **Alerts**       | The things that quietly leave a server broken (see below) |
 
 ### The Alerts category

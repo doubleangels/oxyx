@@ -65,7 +65,7 @@ export function initDockerSettings(ids) {
     row.className = 'flex flex-wrap items-center gap-2';
     row.dataset.bindRow = '';
     row.innerHTML = `
-      <input class="input min-w-40 flex-1 font-mono text-xs" placeholder="Host path (e.g. /opt/msm/extra/geyser)" data-bind-host>
+      <input class="input min-w-40 flex-1 font-mono text-xs" placeholder="Host path (e.g. /opt/oxyx/extra/geyser)" data-bind-host>
       <span class="text-ink-faint">&rarr;</span>
       <input class="input min-w-32 flex-1 font-mono text-xs" placeholder="Container path" data-bind-container>
       <select class="input w-20" data-bind-mode><option value="rw">RW</option><option value="ro">RO</option></select>

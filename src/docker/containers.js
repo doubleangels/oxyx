@@ -19,6 +19,9 @@ const GAME_PORT = '25565';
 const RCON_PORT = '25575';
 const BEDROCK_PORT = '19132';
 
+// The default name keeps the pre-rename `msm-` prefix on purpose: a server
+// whose container id was never recorded is found by this name, so changing it
+// would lose track of a running container (and collide on its ports).
 function containerName(serverId) {
   return `msm-${serverId}`;
 }

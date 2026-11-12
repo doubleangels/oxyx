@@ -193,9 +193,9 @@ validation and error messages, and the docs — follows one house style (full de
 - **ALL CAPS:** only `page-header heading=`.
 - **Sentence case (a full sentence):** everything else — help, hints, tooltips, placeholders,
   empty-state bodies, toasts, confirm-dialog bodies _and_ titles, event and history summaries.
-- Proper nouns stay capitalised in any casing: Minecraft, Mojang, Docker, Java, RCON, Modrinth,
+- Proper nouns stay capitalized in any casing: Minecraft, Mojang, Docker, Java, RCON, Modrinth,
   CurseForge, BlueMap, Discord, Fabric/Forge/NeoForge/Quilt/Paper/Purpur, Bedrock, Geyser, Node.js,
-  pnpm. Capitalise an interpolated `${loader}` through the `capitalize()` helper.
+  pnpm. Capitalize an interpolated `${loader}` through the `capitalize()` helper.
 
 ### Sentences and punctuation
 

@@ -15,19 +15,19 @@ test('classifyPhase returns null when nothing matches', () => {
 
 test('classifyPhase detects a download phase', () => {
   const r = liveCache.classifyPhase('Downloading modpack: https://…\nprogress');
-  assert.deepEqual(r, { key: 'pack-download', label: 'Downloading modpack' });
+  assert.deepEqual(r, { key: 'pack-download', label: 'Downloading modpack…' });
 });
 
 test('classifyPhase counts Downloaded mod file lines (plural label)', () => {
   const r = liveCache.classifyPhase('Downloaded mod file a\nDownloaded mod file b\nDownloaded mod file c');
   assert.equal(r.key, 'mods-download');
-  assert.equal(r.label, 'Downloading mods (3 in the last minute)');
+  assert.equal(r.label, 'Downloading mods (3 in the last minute)…');
 });
 
 test('classifyPhase uses the singular label for a single download', () => {
   const r = liveCache.classifyPhase('Downloaded mod file a');
   assert.equal(r.key, 'mods-download');
-  assert.equal(r.label, 'Downloading mods');
+  assert.equal(r.label, 'Downloading mods…');
 });
 
 test('classifyPhase detects loader install, world-gen and done', () => {
@@ -44,7 +44,7 @@ test('classifyPhase latest pipeline stage wins', () => {
 
 test('classifyPhase non-mod-download phases use the static label', () => {
   const r = liveCache.classifyPhase('Downloading minecraft_server.jar');
-  assert.deepEqual(r, { key: 'server-download', label: 'Downloading server' });
+  assert.deepEqual(r, { key: 'server-download', label: 'Downloading server…' });
 });
 
 // ---------------------------------------------------------------------------
@@ -80,10 +80,10 @@ test('sampleOnce returns null when Docker stats are unavailable', async () => {
 test('statusDetail returns the boot phase label while not yet answering rcon', () => {
   const detail = liveCache.statusDetail({
     players: null,
-    phase: { key: 'world-gen', label: 'Generating world' },
+    phase: { key: 'world-gen', label: 'Generating world…' },
     upConfirmed: false,
   });
-  assert.equal(detail, 'Generating world');
+  assert.equal(detail, 'Generating world…');
 });
 
 test('statusDetail latching player-count-unavailable when up but unparseable list', () => {
@@ -97,7 +97,7 @@ test('statusDetail returns null when nothing to show', () => {
 test('statusDetail prefers a parsed player list over phase/up branches', () => {
   const detail = liveCache.statusDetail({
     players: { online: 3 },
-    phase: { key: 'boot', label: 'Starting up' },
+    phase: { key: 'boot', label: 'Starting up…' },
     upConfirmed: true,
   });
   assert.equal(detail, null);
