@@ -280,6 +280,9 @@ test('hidden server: 404 on pages and API, refused actions read as not found', a
   // An action on a hidden server is 404, never 403 (no existence leak).
   assert.equal((await app.req('POST', `/api/servers/${A}/stop`, { cookie: viewerCookie })).status, 404);
   assert.equal((await app.req('GET', `/map/${A}/`, { cookie: viewerCookie })).status, 404);
+  // A map token minted before the server was hidden stops working at once.
+  const { mintMapToken } = require('../src/web/routes/mapProxy');
+  assert.equal((await app.req('GET', `/map/${A}/t/${mintMapToken(A, viewerId)}/`)).status, 404);
   // B is still there.
   assert.equal((await app.req('GET', `/api/servers/${B}/logs`, { cookie: viewerCookie })).status, 200);
 });

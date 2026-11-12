@@ -6,7 +6,7 @@
       </span>
       <span class="text-xs text-ink-faint">BlueMap renders in the background. A newly enabled map takes a few minutes to draw its first tiles.</span>
       <div class="ml-auto flex items-center gap-2">
-        <a class="btn btn-sm" href="/map/{{server.id}}/" target="_blank" rel="noopener">{{{icon 'external-link' 'size-3.5'}}} Fullscreen</a>
+        <a class="btn btn-sm" href="{{mapUrl}}" target="_blank" rel="noopener noreferrer">{{{icon 'external-link' 'size-3.5'}}} Fullscreen</a>
         {{! Divider: destructive Disable must not sit flush against Fullscreen. }}
         <span class="h-5 w-px bg-line" aria-hidden="true"></span>
         <button class="btn btn-ghost btn-sm text-danger" data-map-disable data-server-id="{{server.id}}">Disable Map</button>
@@ -23,7 +23,9 @@
         <p class="mt-2 max-w-sm">The map isn't up yet. It appears here once the server is running and BlueMap has rendered its first tiles. Checking again automatically…</p>
       </div>
     </div>
-    <iframe src="/map/{{server.id}}/" class="h-[70vh] w-full border-0 bg-stone-950" title="Live world map." data-map-frame></iframe>
+    {{! sandbox without allow-same-origin: the map's scripts come from the
+        server's data folder and must not run with the panel's origin. }}
+    <iframe src="{{mapUrl}}" sandbox="allow-scripts" class="h-[70vh] w-full border-0 bg-stone-950" title="Live world map." data-map-frame></iframe>
   </div>
 {{else}}
   <div class="card grid place-items-center px-6 py-16 text-center">

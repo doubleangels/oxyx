@@ -400,6 +400,9 @@ function createApp() {
       secure: config.cookieSecure,
     },
   });
+  // BlueMap proxy: authenticated by a per-server token in the path, never by
+  // the session cookie, so it mounts before the session loads (see mapProxy.js).
+  app.use('/map', require('./routes/mapProxy'));
   app.use(sessionMiddleware);
   app.set('sessionMiddleware', sessionMiddleware);
   app.use(originGuard);
@@ -446,7 +449,6 @@ function createApp() {
   app.use('/api', require('./routes/api'));
   app.use('/api/tasks', require('./routes/tasks'));
   app.use('/api/solver', require('./routes/solver'));
-  app.use('/map', require('./routes/mapProxy'));
   app.use(routes);
 
   // 404 + error pages (kept friendly; detailed errors go to the server log only)

@@ -17,6 +17,11 @@ its own dated entry.
   `server.properties`) can no longer contain slashes or start with a dot. Saving such a name is
   refused, and world, inventory, stats and blueprint actions on a server that already has one stop
   with a message that says how to fix it, instead of acting on a folder outside that server.
+- **The live map runs in a sandbox.** BlueMap's web files live in the server's data folder, so
+  anyone who could edit them could run script with the rights of whoever opened the Map tab. The
+  map is now served under a signed link that expires after six hours, inside a sandboxed frame with
+  no access to the panel's sign-in. The old `/map/<server>/` address no longer works. Reopen the Map
+  tab to get a fresh link.
 
 ## [0.14.1] - 2026-09-21
 

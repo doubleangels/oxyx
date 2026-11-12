@@ -44,8 +44,9 @@ These are properties of the design rather than bugs, and they are documented in 
   commands as root on the host. Treat panel admin access the same way you treat SSH access.
 - **The panel speaks plain HTTP by itself.** Put it behind a reverse proxy with TLS before exposing
   it beyond your own network, and set `COOKIE_SECURE`.
-- **BlueMap's own web server binds to every interface.** Reach a live map through the panel's
-  authenticated proxy and keep that port closed at the firewall.
+- **BlueMap's web files come from the server's data folder.** The panel serves them under a signed,
+  expiring link in a sandboxed frame, so a rewritten map page cannot act as the person viewing it.
+  It can still show them anything it likes inside that frame.
 
 Reports that amount to "an admin can do admin things" or "the panel is insecure if you publish it on
 the internet without TLS" will be closed with a pointer to this list.
