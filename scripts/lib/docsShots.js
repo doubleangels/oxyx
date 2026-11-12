@@ -1,5 +1,5 @@
 'use strict';
-/* global document, window -- page.evaluate() callbacks run in the browser */
+/* global document, window, PushManager, Notification -- page.evaluate() callbacks run in the browser */
 
 // The screenshot list for scripts/docs-screenshots.js. Each entry names its
 // output file (docs/images by default, docs/screenshots with dir: 'shots') and
@@ -47,6 +47,27 @@ module.exports = function shots({ base, demo }) {
     await page.route(pattern, (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
     );
+  };
+
+  // The Mobile App page with push "on" for this browser. Headless Chromium has
+  // no push service, so the browser side is stubbed to own the demo endpoint
+  // seeded in docsDemo.js; everything else is the real page and API.
+  const mobileApp = (viewport, anchor) => async (page) => {
+    await page.setViewportSize(viewport);
+    await page.addInitScript((endpoint) => {
+      const fake = {
+        endpoint,
+        toJSON: () => ({ endpoint, keys: { p256dh: 'B'.repeat(87), auth: 'demoauthsecret00demo' } }),
+        unsubscribe: async () => true,
+      };
+      if (window.PushManager) PushManager.prototype.getSubscription = async () => fake;
+      // Headless Chromium always reports notifications as denied.
+      if (window.Notification) Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
+    }, demo.DEMO_ENDPOINT);
+    await demo.signIn(page, base);
+    await go('/settings/app')(page);
+    await page.waitForSelector('[data-push-prefs]:not(.hidden)');
+    if (anchor) await reveal(anchor, 70)(page);
   };
 
   return [
@@ -364,6 +385,20 @@ module.exports = function shots({ base, demo }) {
         click('#permissions-reference details summary'),
         reveal('#permissions-reference')
       ),
+    },
+
+    // ---- Mobile App ----------------------------------------------------------
+    {
+      file: 'mobile-app.png',
+      fresh: true,
+      run: mobileApp({ width: 1440, height: 900 }),
+      settle: 900,
+    },
+    {
+      file: 'mobile-app-phone.png',
+      fresh: true,
+      run: mobileApp({ width: 390, height: 844 }, '#app-push'),
+      settle: 900,
     },
 
     // ---- Account -------------------------------------------------------------

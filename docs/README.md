@@ -38,6 +38,7 @@ A complete, self-hosted control panel for [itzg/docker-minecraft-server](https:/
 
 - **[Users & roles](users-and-roles.md)**: admin, operator, and viewer, what each can do, and per-server permissions that refine them.
 - **[Two-factor authentication](two-factor-authentication.md)**: protect your login with an authenticator app.
+- **[Mobile app](mobile-app.md)**: install Oxyx on your phone, get push notifications about crashes and problems, and set up the app on each device.
 
 ## Guides
 

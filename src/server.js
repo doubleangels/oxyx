@@ -174,6 +174,7 @@ function startBackgroundServices(httpServer) {
   require('./crashes').startCrashWatcher({});
   require('./services/scheduler').startScheduler();
   require('./integrations/discord').startEventBridge();
+  require('./services/push').startPushBridge();
   require('./services/inventory').startSnapshotWatcher();
   require('./services/wizard').startOutreachWatcher();
 

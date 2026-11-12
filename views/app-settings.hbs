@@ -1,0 +1,107 @@
+{{> page-header heading="MOBILE APP" sub="Install Oxyx on your phone or computer, get notified about your servers even when the app is closed, and choose how the app behaves on this device."}}
+
+<div class="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-6" id="app-settings">
+  <nav class="mb-4 flex flex-nowrap gap-1.5 overflow-x-auto pb-1 lg:sticky lg:top-24 lg:mb-0 lg:flex-col lg:self-start lg:overflow-visible" aria-label="Mobile app sections" data-settings-jump>
+    <a class="subtab shrink-0" href="#app-install" data-jump="app-install">{{{icon 'smartphone' 'size-3.5'}}} Install</a>
+    <a class="subtab shrink-0" href="#app-push" data-jump="app-push">{{{icon 'bell-ring' 'size-3.5'}}} Notifications</a>
+    <a class="subtab shrink-0" href="#app-devices" data-jump="app-devices">{{{icon 'monitor-smartphone' 'size-3.5'}}} Your Devices</a>
+    <a class="subtab shrink-0" href="#app-options" data-jump="app-options">{{{icon 'sliders' 'size-3.5'}}} App Options</a>
+    <a class="subtab shrink-0" href="#app-share" data-jump="app-share">{{{icon 'share-2' 'size-3.5'}}} Sharing</a>
+  </nav>
+
+  <div class="min-w-0 space-y-5 [&>section]:scroll-mt-32">
+    {{#> settings/card heading="Install on This Device" icon="smartphone" id="app-install" desc="An installed app opens full screen from its own icon, keeps you signed in, and can receive notifications while closed."}}
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="badge" data-app-mode>Checking…</span>
+        <button type="button" class="btn btn-primary" data-install-app>{{{icon 'download' 'size-4'}}} Install App</button>
+      </div>
+      <div class="notice notice-warn mt-3 hidden" data-insecure-notice>
+        {{{icon 'triangle-alert' 'size-4 mt-0.5 shrink-0 text-warn'}}}
+        <div>Installing and notifications need a secure (HTTPS) address. Open the panel through a domain with a certificate, for example behind a reverse proxy, then come back here.</div>
+      </div>
+      <div class="notice notice-info mt-3 hidden" data-ios-notice>
+        {{{icon 'info' 'size-4 mt-0.5 shrink-0'}}}
+        <div>On iPhone and iPad, notifications work only in the installed app (iOS 16.4 or later). Add Oxyx to your Home Screen with <b>Share</b>, then <b>Add to Home Screen</b>, and open it from there to turn them on.</div>
+      </div>
+    {{/settings/card}}
+
+    {{#> settings/card heading="Push Notifications" icon="bell-ring" id="app-push" desc="Choose what reaches this device. Each device keeps its own choices."}}
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="badge" data-push-state>Checking…</span>
+        <button type="button" class="btn btn-primary hidden" data-push-enable>{{{icon 'bell' 'size-4'}}} Turn On for This Device</button>
+        <button type="button" class="btn hidden" data-push-test>{{{icon 'send' 'size-4'}}} Send Test Notification</button>
+        <button type="button" class="btn btn-ghost hidden text-danger" data-push-disable>{{{icon 'bell-off' 'size-4'}}} Turn Off</button>
+      </div>
+      <p class="help mt-2" data-push-help></p>
+
+      <div class="mt-5 hidden space-y-6" data-push-prefs>
+        <div>
+          <label class="label" for="push-device-name">Device Name</label>
+          <input class="input max-w-sm" id="push-device-name" maxlength="60" placeholder="e.g. Alex's phone">
+          <p class="help mt-1">Shown in Your Devices below, so you can tell them apart.</p>
+        </div>
+
+        <div>
+          <h4 class="label">Notify Me About</h4>
+          <div class="mt-2 divide-y divide-line" data-push-categories></div>
+        </div>
+
+        <div>
+          <h4 class="label">Servers</h4>
+          {{> settings/toggle-row label="All Servers" help="Includes servers added later. Turn it off to pick servers one by one." inputId="push-all-servers" checked=true}}
+          <div class="mt-2 hidden grid gap-2 sm:grid-cols-2" data-push-servers></div>
+        </div>
+
+        <div>
+          <h4 class="label">Quiet Hours</h4>
+          {{> settings/toggle-row label="Mute Notifications at Night" help="Uses the panel's timezone, set in Panel Settings." inputId="push-quiet"}}
+          <div class="mt-2 flex flex-wrap items-end gap-3" data-push-quiet-times>
+            <div>
+              <label class="label" for="push-quiet-from">From</label>
+              <input class="input w-32" type="time" id="push-quiet-from" value="22:00">
+            </div>
+            <div>
+              <label class="label" for="push-quiet-to">Until</label>
+              <input class="input w-32" type="time" id="push-quiet-to" value="07:00">
+            </div>
+          </div>
+          {{> settings/toggle-row label="Let Crashes and Problems Through" help="A crashed or broken server still notifies you during quiet hours." inputId="push-quiet-critical" checked=true}}
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary" data-push-save>{{{icon 'save' 'size-4'}}} Save Choices</button>
+        </div>
+      </div>
+    {{/settings/card}}
+
+    {{#> settings/card heading="Your Devices" icon="monitor-smartphone" id="app-devices" desc="Every phone, tablet or computer where you turned notifications on."}}
+      <div class="divide-y divide-line" data-push-devices>
+        <p class="empty-inline">Loading…</p>
+      </div>
+    {{/settings/card}}
+
+    {{#> settings/card heading="App Options" icon="sliders" id="app-options" desc="Saved on this device only."}}
+      <div class="space-y-3">
+        {{> settings/toggle-row label="Alert Count on the App Icon" help="The home-screen icon shows how many health alerts are waiting (crashes, out-of-memory stops, auto-restarts)." inputId="app-badge" checked=true}}
+        {{> settings/toggle-row label="Keep the Screen On in the Console" help="Stops the phone from locking while you watch a server's console." inputId="app-wakelock"}}
+        {{> settings/toggle-row label="Vibrate on Server Actions" help="A short buzz when you start, stop or restart a server (Android)." inputId="app-haptics" checked=true}}
+        <div>
+          <label class="label" for="app-start">Open the App On</label>
+          <select class="input max-w-sm" id="app-start" data-app-start>
+            <option value="/">Dashboard</option>
+            <option value="/servers">Servers</option>
+            <option value="/health">Health</option>
+            <option value="/backups">Backups</option>
+            <option value="/activity">Activity</option>
+          </select>
+          <p class="help mt-1">The page the installed app shows when you open it from its icon.</p>
+        </div>
+      </div>
+    {{/settings/card}}
+
+    {{#> settings/card heading="Share Links to Oxyx" icon="share-2" id="app-share" desc="Once installed on Android, Oxyx appears in the share sheet."}}
+      <p class="text-sm text-ink-soft">Found a mod or plugin on Modrinth, CurseForge, Hangar or SpigotMC? Share the page to <b>Oxyx</b>, pick a server, and the panel opens <b>Add Mod by URL</b> with the link filled in.</p>
+    {{/settings/card}}
+  </div>
+</div>
+<script type="module" src="{{asset '/js/pages/app-settings.js'}}"></script>

@@ -5,7 +5,7 @@
   "description": "Run, watch and back up your Minecraft servers on Docker.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/",
+  "start_url": "/?launch=app",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
@@ -93,5 +93,14 @@
         }
       ]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

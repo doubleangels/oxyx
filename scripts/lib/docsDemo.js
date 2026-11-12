@@ -19,6 +19,7 @@ Math.random = () => {
 };
 
 const ADMIN = { username: 'alex', password: 'demo-password-123' };
+const DEMO_ENDPOINT = 'https://fcm.googleapis.com/fcm/send/demo-this-device';
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
 
@@ -675,6 +676,37 @@ async function seed() {
   // The fake-player helper signs its work as 'seed-script'; attribute it to a person.
   db.run("UPDATE events SET actor = 'maya' WHERE actor = 'seed-script'");
 
+  // Push notifications on two of alex's devices (the browser in the screenshots
+  // is stubbed to own the first endpoint, see docsShots.js).
+  const push = require('../../src/services/push');
+  push.publicKey(); // creates the VAPID key pair
+  for (const [i, [name, ua, prefs]] of [
+    [
+      'Pixel 8 · Chrome',
+      'Mozilla/5.0 (Linux; Android 15; Pixel 8) Chrome/131 Mobile',
+      {
+        categories: { lifecycle: true, joins: true },
+        quiet: { enabled: true, from: '23:00', to: '07:00', allowCritical: true },
+      },
+    ],
+    ['iPad · Safari', 'Mozilla/5.0 (iPad; CPU OS 18_1 like Mac OS X) Safari/605', {}],
+  ].entries()) {
+    db.run(
+      `INSERT INTO push_subscriptions (id, user_id, endpoint, p256dh, auth_cipher, device_name, user_agent, prefs_json, created_at, last_sent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `push_demo${i}`,
+      admin.id,
+      i === 0 ? DEMO_ENDPOINT : 'https://web.push.apple.com/QDemoIpadEndpoint',
+      'B'.repeat(87),
+      secrets.encrypt('demoauthsecret00demo'),
+      name,
+      ua,
+      JSON.stringify(push.normalizePrefs(prefs)),
+      sqlTime(ago(9 * 1440 + i * 600)),
+      sqlTime(ago(35 + i * 300))
+    );
+  }
+
   // History lists sort by id. Re-number every event in time order so the
   // backdated ones sit where their timestamps say.
   db.exec(`
@@ -737,4 +769,4 @@ async function signIn(page, base) {
   await Promise.all([page.waitForURL((u) => !u.pathname.startsWith('/login')), page.click('button[type="submit"]')]);
 }
 
-module.exports = { SERVERS, ADMIN, seed, signIn, inspect, live, liveAll, consoleText, exec, mrpack };
+module.exports = { SERVERS, ADMIN, DEMO_ENDPOINT, seed, signIn, inspect, live, liveAll, consoleText, exec, mrpack };

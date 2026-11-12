@@ -1196,6 +1196,28 @@ router.get('/settings/permissions', requireRole('admin'), (req, res) => {
   });
 });
 
+// Share target (manifest share_target): a link shared to the installed app from
+// another app lands here. Pick the server to add it to, then the Mods tab opens
+// Add Mod by URL with it filled in. Only servers the user may add content to.
+router.get('/share', (req, res) => {
+  const pick = (v) => (typeof v === 'string' ? v.slice(0, 2000) : '');
+  const text = [pick(req.query.url), pick(req.query.text), pick(req.query.title)].join(' ');
+  const match = /https?:\/\/[^\s<>"']+/i.exec(text);
+  const link = match ? match[0] : '';
+  const targets = permissions
+    .filterVisible(req.user, serversService.listServers(), res.locals.visibleServerIds)
+    .filter((s) => permissions.can(req.user, s.id, 'content'))
+    .map((s) => ({ id: s.id, name: s.display_name, href: `/servers/${s.id}/mods?addUrl=${encodeURIComponent(link)}` }));
+  if (link && targets.length === 1) return res.redirect(targets[0].href);
+  res.render('share', { title: 'Add a Shared Link', link, targets });
+});
+
+// Mobile App: install status, push notifications for this device, and per-device
+// app options. Every role, since all of it is personal.
+router.get('/settings/app', (req, res) => {
+  res.render('app-settings', { title: 'Mobile App', active: 'app' });
+});
+
 router.get('/settings', requireRole('admin'), (req, res) => {
   const apiKeys = require('../../services/apiKeys');
   const config = require('../../config');

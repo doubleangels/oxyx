@@ -511,7 +511,9 @@ module.exports = {
   startEventBridge,
   stopEventBridge,
   WEBHOOK_RE,
-  EVENT_MAP, // exported for tests
+  EVENT_MAP, // exported for tests, and shared with Web Push (services/push.js)
+  EVENT_STYLE,
+  titleFor,
   _eventEmbed: eventEmbed,
   _buildEmbed: buildEmbed,
   // Exported for tests: drive one poll cycle / resolve the boot mark deterministically.

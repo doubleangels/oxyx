@@ -8,6 +8,7 @@
 
 import { openModal } from './modal.js';
 import { toast } from './toast.js';
+import { getPref } from './appPrefs.js';
 
 const secure = window.isSecureContext;
 const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -139,8 +140,45 @@ export function notify(title, { body = '', url = '/' } = {}) {
   });
 }
 
-// ---- Home-screen badge: unread health alerts ----
+// ---- Home-screen badge: unread health alerts (Mobile App > App Options) ----
 const healthCount = Number(document.body?.dataset.healthCount) || 0;
 if ('setAppBadge' in navigator) {
-  (healthCount ? navigator.setAppBadge(healthCount) : navigator.clearAppBadge()).catch(() => {});
+  (healthCount && getPref('badge') ? navigator.setAppBadge(healthCount) : navigator.clearAppBadge()).catch(() => {});
+}
+
+// ---- Start screen: the installed app launches at /?launch=app (manifest
+// start_url); send it to the page chosen on the Mobile App page, once. ----
+{
+  const url = new URL(location.href);
+  if (url.searchParams.get('launch') === 'app') {
+    url.searchParams.delete('launch');
+    const start = getPref('start');
+    if (start && start !== '/' && start.startsWith('/') && !start.startsWith('//')) location.replace(start);
+    else history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
+}
+
+// ---- Keep the screen on while a console is open (Screen Wake Lock) ----
+if ('wakeLock' in navigator && getPref('wakelock') && /^\/servers\/[^/]+\/console$/.test(location.pathname)) {
+  let lock = null;
+  const acquire = () => {
+    if (document.visibilityState !== 'visible' || lock) return;
+    navigator.wakeLock
+      .request('screen')
+      .then((l) => {
+        lock = l;
+        l.addEventListener('release', () => (lock = null));
+      })
+      .catch(() => {});
+  };
+  acquire();
+  // The browser drops the lock whenever the page is hidden; take it back.
+  document.addEventListener('visibilitychange', acquire);
+}
+
+// ---- Haptics: a short buzz on server power actions (Android) ----
+if ('vibrate' in navigator) {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-server-action]') && getPref('haptics')) navigator.vibrate(15);
+  });
 }

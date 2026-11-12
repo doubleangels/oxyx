@@ -11,5 +11,5 @@
     {{{icon 'history' 'size-5'}}}<span>Activity</span>
     {{#if healthCount}}<span class="badge badge-danger absolute right-2 top-1 px-1 text-[10px] leading-none ring-2 ring-surface" aria-label="{{healthCount}} health alerts">{{healthCount}}</span>{{/if}}
   </a>
-  <button type="button" class="app-tab {{#if (or (eq active 'updates') (eq active 'backups') (eq active 'schedules') (eq active 'storage') (eq active 'settings') (eq active 'permissions'))}}active{{/if}}" data-sidebar-open aria-label="More pages">{{{icon 'menu' 'size-5'}}}<span>More</span></button>
+  <button type="button" class="app-tab {{#if (or (eq active 'updates') (eq active 'backups') (eq active 'schedules') (eq active 'storage') (eq active 'settings') (or (eq active 'permissions') (eq active 'app')))}}active{{/if}}" data-sidebar-open aria-label="More pages">{{{icon 'menu' 'size-5'}}}<span>More</span></button>
 </nav>

@@ -59,6 +59,7 @@
       <div class="border-b border-line px-3 py-2 text-xs text-ink-faint">{{user.username}} · {{capitalize user.role}}</div>
       <button type="button" class="w-full text-left" data-open-avatar-picker>{{{icon 'user' 'size-4'}}} Profile Picture</button>
       <button type="button" class="w-full text-left" data-open-2fa>{{{icon 'shield-check' 'size-4'}}} 2FA</button>
+      <a class="w-full text-left" href="/settings/app">{{{icon 'bell' 'size-4'}}} Notifications &amp; App</a>
       {{! Phone-only copies of the topbar controls that move in here below sm. }}
       <button type="button" class="w-full text-left sm:hidden" data-theme-toggle>{{{icon 'sun-moon' 'size-4'}}} Switch Theme</button>
       <button type="button" class="hidden w-full text-left [@media(display-mode:standalone)]:block sm:[@media(display-mode:standalone)]:hidden" data-app-refresh>{{{icon 'refresh-cw' 'size-4'}}} Reload Page</button>

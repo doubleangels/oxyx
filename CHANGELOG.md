@@ -7,6 +7,17 @@ its own dated entry.
 
 ## [Unreleased]
 
+### Added
+
+- **Push notifications to your phone, and a Mobile App page.** Open **Mobile App** in the sidebar
+  (every role can) to install Oxyx and turn on notifications for each device: crashes and problems
+  arrive even when the app is closed. Choose per device which kinds of events notify (crashes,
+  problems, updates, start and stop, backups, moderation, player joins), which servers, and quiet
+  hours that can still let urgent ones through. Your Devices lists every device with a test button.
+  The page also sets per-device app options: the alert count on the app icon, keeping the screen on
+  in the console, a buzz on server actions, and which page the app opens on. On Android you can
+  share a mod or plugin link to Oxyx and add it to a server. See `docs/mobile-app.md`.
+
 ### Fixed
 
 - **Keyboard and screen reader basics.** Every page now starts with a Skip to Content link that
