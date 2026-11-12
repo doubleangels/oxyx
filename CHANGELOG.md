@@ -26,6 +26,9 @@ its own dated entry.
 
 ### Changed
 
+- **Faster page loads after the first.** Client scripts are built with content-hashed names and the
+  stylesheet link carries a content version, so browsers cache both for a year instead of
+  rechecking every file on every page. An update changes the URLs, so new code still loads at once.
 - **The panel exits after an uncaught exception.** Its state is unknown after one (a half-finished
   database transaction, a held lock), so it now logs the fault and exits for Docker or systemd to
   restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
