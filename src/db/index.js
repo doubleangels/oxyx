@@ -67,6 +67,13 @@ function transaction(fn) {
 function close() {
   if (db) {
     stmtCache.clear();
+    // Fold the WAL back into the main file and empty it, so a copy of the data
+    // folder taken after shutdown is complete without the -wal sidecar.
+    try {
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    } catch {
+      /* best effort: close() still checkpoints on the last connection */
+    }
     db.close();
     db = null;
   }

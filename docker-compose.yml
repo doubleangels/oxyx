@@ -20,6 +20,11 @@ services:
     image: ghcr.io/doubleangels/oxyx:latest
     container_name: oxyx
     restart: unless-stopped
+    # A tiny init as PID 1 forwards SIGTERM to Node and reaps zombies, so
+    # `docker stop` triggers the panel's clean shutdown (finish requests, close
+    # the database) instead of waiting out the timeout and killing it.
+    init: true
+    stop_grace_period: 20s
     ports:
       # Web UI. Change the left side to move it; the panel itself listens on
       # 25564 in-container. Bind to 127.0.0.1:25564 if a reverse proxy fronts it.

@@ -157,7 +157,14 @@ try {
     startBackgroundServices(httpServer);
   });
 
-  require('./web/httpLifecycle').configureHttpTimeouts(httpServer);
+  const lifecycle = require('./web/httpLifecycle');
+  lifecycle.configureHttpTimeouts(httpServer);
+  lifecycle.installGracefulShutdown(httpServer, {
+    getWss: () => httpServer.wss,
+    closeDb: () => require('./db').close(),
+    exit: bailOut,
+    logger,
+  });
 
   httpServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
@@ -191,7 +198,8 @@ try {
 // Everything that runs once the panel is listening. Split out so a throw here is
 // clearly a post-boot background failure, not a startup failure.
 function startBackgroundServices(httpServer) {
-  require('./ws').attachWebSockets(httpServer);
+  // Kept on the server so graceful shutdown can close live views.
+  httpServer.wss = require('./ws').attachWebSockets(httpServer);
   require('./storage/indexer').startIndexer();
   require('./crashes').startCrashWatcher({});
   require('./services/scheduler').startScheduler();

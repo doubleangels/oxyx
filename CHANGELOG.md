@@ -12,6 +12,10 @@ its own dated entry.
 - **Large uploads no longer stop after five minutes.** Node ends any request that runs longer than
   300 seconds, which cut off uploads over roughly 750 MB on a 20 Mbps connection. Uploads are now
   limited only by their size caps and the disk quota.
+- **The panel shuts down cleanly.** On `SIGTERM` or `SIGINT` (such as `docker stop`) it stops taking
+  new connections, closes live console views, lets running requests finish for up to eight seconds,
+  and closes the database with its write-ahead log folded back in. Before, Docker waited out its
+  timeout and killed it. The compose file now sets `init: true` and a 20 second stop grace period.
 
 ### Security
 
