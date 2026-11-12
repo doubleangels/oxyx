@@ -7,6 +7,12 @@ its own dated entry.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Large uploads no longer stop after five minutes.** Node ends any request that runs longer than
+  300 seconds, which cut off uploads over roughly 750 MB on a 20 Mbps connection. Uploads are now
+  limited only by their size caps and the disk quota.
+
 ### Security
 
 - **Blueprint import only reads files from its own archive.** An overlay file name or config file

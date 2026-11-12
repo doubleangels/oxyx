@@ -157,6 +157,8 @@ try {
     startBackgroundServices(httpServer);
   });
 
+  require('./web/httpLifecycle').configureHttpTimeouts(httpServer);
+
   httpServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       logger.fatal(
