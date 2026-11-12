@@ -19,6 +19,11 @@ its own dated entry.
   new connections, closes live console views, lets running requests finish for up to eight seconds,
   and closes the database with its write-ahead log folded back in. Before, Docker waited out its
   timeout and killed it. The compose file now sets `init: true` and a 20 second stop grace period.
+- **Database migrations are numbered without gaps and run more safely.** The migrations are now
+  numbered 001 to 033 with no holes. Installs that already applied the old numbers are recognised
+  and nothing re-runs. Each migration is checked before it commits: one that leaves a broken
+  reference is rolled back, and one written as `async` is refused. Three redundant indexes are
+  dropped, which makes event and library writes cheaper.
 - **Upgrades copy the database before changing its schema.** When a new version has database
   migrations to apply, the panel first saves `backups/_panel/pre-migrate-v<version>-<time>.db`
   (the newest five are kept), so a bad migration can be rolled back to the moment before it ran.

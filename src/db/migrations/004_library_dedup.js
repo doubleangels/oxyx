@@ -6,21 +6,27 @@
 // server_content references to the surviving row, then add the UNIQUE index.
 
 function up(db) {
-  const dups = db.all(
-    `SELECT sha256, category, MIN(id) AS keep, COUNT(*) AS n
-       FROM library_files
-      GROUP BY sha256, category
-     HAVING n > 1`
-  );
-  for (const d of dups) {
-    const losers = db
-      .all('SELECT id FROM library_files WHERE sha256 = ? AND category = ? AND id <> ?', d.sha256, d.category, d.keep)
-      .map((r) => r.id);
-    for (const lid of losers) {
-      db.run('UPDATE server_content SET library_id = ? WHERE library_id = ?', d.keep, lid);
-      db.run('DELETE FROM library_files WHERE id = ?', lid);
-    }
-  }
+  // Set-based instead of a query per duplicate: one pass re-points references
+  // to the surviving (lowest-id) row of each (sha256, category) group, a second
+  // drops the losers. sha256 is NOT NULL, but the IS NOT NULL guard keeps a
+  // hand-edited row from being collapsed with others by GROUP BY's NULL group.
+  db.exec(`
+    CREATE TEMP TABLE library_dedup_map AS
+      SELECT l.id AS loser, k.keep
+        FROM library_files l
+        JOIN (SELECT sha256, category, MIN(id) AS keep
+                FROM library_files
+               WHERE sha256 IS NOT NULL
+               GROUP BY sha256, category
+              HAVING COUNT(*) > 1) k
+          ON k.sha256 = l.sha256 AND k.category = l.category
+       WHERE l.id <> k.keep;
+    UPDATE server_content
+       SET library_id = (SELECT keep FROM library_dedup_map WHERE loser = server_content.library_id)
+     WHERE library_id IN (SELECT loser FROM library_dedup_map);
+    DELETE FROM library_files WHERE id IN (SELECT loser FROM library_dedup_map);
+    DROP TABLE library_dedup_map;
+  `);
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_library_sha_cat ON library_files(sha256, category)');
 }
 

@@ -35,6 +35,11 @@ const LEGACY_MIGRATION_ALIASES = {
   '022_crash_mclogs': ['015_crash_mclogs'],
   '023_datapack_jar_cleanup': ['016_datapack_jar_cleanup'],
   '024_update_check_ignore': ['017_update_check_ignore'],
+  // Later renumber that closed the gaps left at 030 and 032 (numbers that never
+  // shipped as files), so the sequence runs 001..N without holes.
+  '030_port_change_immediate': ['031_port_change_immediate'],
+  '031_alert_dismissals': ['033_alert_dismissals'],
+  '032_internal_port_bind': ['034_internal_port_bind'],
 };
 
 const PRE_MIGRATE_KEEP = 5;
@@ -131,13 +136,33 @@ function migrate({ dir = MIGRATIONS_DIR, snapshot = true } = {}) {
     }
     const { up } = require(path.join(dir, file));
     db.transaction(() => {
-      up(db);
+      // Violations that predate this migration (an old install can carry a
+      // dangling reference) must not block the upgrade, only new ones.
+      const fkKey = (r) => `${r.table}|${r.rowid}|${r.parent}|${r.fkid}`;
+      const before = new Set(db.all('PRAGMA foreign_key_check').map(fkKey));
+      const result = up(db);
+      // db.transaction() commits as soon as up() returns. An async up() would
+      // commit before its awaited work ran, outside the transaction.
+      if (result && typeof result.then === 'function') {
+        throw new Error(`Migration ${version} returned a promise. Migrations must be synchronous.`);
+      }
+      // A migration that rebuilds or rewires tables must not leave a dangling
+      // reference behind. Checked before commit, so a violation rolls it back.
+      const broken = db.all('PRAGMA foreign_key_check').filter((r) => !before.has(fkKey(r)));
+      if (broken.length > 0) {
+        throw new Error(
+          `Migration ${version} left ${broken.length} broken foreign key reference(s), first in table ${broken[0].table}. Nothing was changed.`
+        );
+      }
       db.run('INSERT INTO schema_migrations (version) VALUES (?)', version);
     });
     count += 1;
     logger.info('Applied a database migration.', { version });
   }
+  // Fresh statistics for the query planner after the schema changed. Cheap, and
+  // a no-op when nothing moved enough to matter.
+  if (count > 0) db.exec('PRAGMA optimize');
   return count;
 }
 
-module.exports = { migrate };
+module.exports = { migrate, LEGACY_MIGRATION_ALIASES };
