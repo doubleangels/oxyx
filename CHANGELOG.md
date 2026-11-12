@@ -26,6 +26,12 @@ its own dated entry.
   saved blueprint now needs the files permission on the server it came from, the same as exporting
   it. A blueprint that is not tied to a server is admin-only. New exports leave `rcon.password`
   blank in `server.properties`. Blueprints exported before this release still contain it.
+- **RCON and BlueMap ports are no longer published to the network.** Docker published them on every
+  interface, past host firewalls such as ufw. They are now bound to `127.0.0.1` (or the Docker
+  host-gateway address when the panel runs in a container); the panel never needed them from
+  outside. Set `INTERNAL_PORT_BIND=all` to keep the old behaviour. Existing servers are marked for a
+  rebuild, which happens on their next start. Server containers also run with
+  `no-new-privileges` and a process limit (`CONTAINER_PIDS_LIMIT`, default 4096).
 
 ## [0.14.1] - 2026-09-21
 
