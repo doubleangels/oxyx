@@ -241,8 +241,10 @@ Cross-cutting:
    compatibility scans left running by a previous process as interrupted
    (`compat.reconcileScans()`), then seed starter blueprints (guarded).
 7. Start the HTTP + WS server. On an exposed bind, print the first-run `/setup` PIN.
-8. Install the post-boot runtime guard (catches uncaught faults; `MSM_EXIT_ON_FATAL=1` makes it
-   hard-exit for supervised deployments).
+8. Install the post-boot runtime guard (`src/runtimeGuards.js`): an uncaught exception is logged and
+   the process exits for the supervisor to restart (`OXYX_KEEP_ALIVE_ON_FATAL=1` opts out); an
+   unhandled rejection is logged and the panel stays up (`OXYX_EXIT_ON_FATAL=1` exits on those too).
+   SIGTERM/SIGINT run a graceful shutdown (`src/web/httpLifecycle.js`).
 9. Start background services: WS broker, storage indexer, crash + inventory watchers, scheduler,
    Discord event bridge, chatbot outreach watcher, and the **daily maintenance timer** (prune old
    analytics rows, chatbot transcripts, event history (365 days) and API cache rows, then snapshot

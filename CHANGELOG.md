@@ -17,6 +17,13 @@ its own dated entry.
   and closes the database with its write-ahead log folded back in. Before, Docker waited out its
   timeout and killed it. The compose file now sets `init: true` and a 20 second stop grace period.
 
+### Changed
+
+- **The panel exits after an uncaught exception.** Its state is unknown after one (a half-finished
+  database transaction, a held lock), so it now logs the fault and exits for Docker or systemd to
+  restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
+  nothing supervises the process. Unhandled promise rejections are still logged without exiting.
+
 ### Security
 
 - **Blueprint import only reads files from its own archive.** An overlay file name or config file
