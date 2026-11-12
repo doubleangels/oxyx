@@ -25,6 +25,7 @@
     "build:css": "tailwindcss -i assets/css/input.css -o public/css/app.css --minify",
     "build:js": "node scripts/build-js.js",
     "build:brand": "node scripts/build-brand.js",
+    "docs:screenshots": "node scripts/docs-screenshots.js",
     "watch:css": "tailwindcss -i assets/css/input.css -o public/css/app.css --watch",
     "postinstall": "node scripts/postinstall.js",
     "lint": "eslint src scripts public/js test eslint.config.js",
