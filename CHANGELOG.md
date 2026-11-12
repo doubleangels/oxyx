@@ -29,6 +29,9 @@ its own dated entry.
 - **Faster page loads after the first.** Client scripts are built with content-hashed names and the
   stylesheet link carries a content version, so browsers cache both for a year instead of
   rechecking every file on every page. An update changes the URLs, so new code still loads at once.
+- **Headings no longer jump when the title font loads.** Press Start 2P now ships as a 30 KB WOFF2
+  (was a 118 KB TTF), is preloaded with the page, and falls back to a monospace face scaled to the
+  same size while it loads.
 - **The panel exits after an uncaught exception.** Its state is unknown after one (a half-finished
   database transaction, a held lock), so it now logs the fault and exits for Docker or systemd to
   restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
