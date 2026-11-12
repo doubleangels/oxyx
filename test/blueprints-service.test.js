@@ -163,3 +163,18 @@ test('exportBlueprint round-trips a seeded server and hides secrets', async () =
     true
   );
 });
+
+test('imported env goes through the same checks as the wizard (F-31)', async () => {
+  const db = require('../src/db');
+  const before = db.get('SELECT COUNT(*) AS n FROM servers').n;
+  const bad = await writeZip('f31a.zip', {
+    'manifest.json': JSON.stringify(
+      manifest({ config: { type: 'PAPER', mcVersion: '1.21.1', env: { LEVEL: '../..' } } })
+    ),
+  });
+  await assert.rejects(bp.importBlueprint(bad, {}, { actor: 'tester' }), { status: 400, message: /World Save Name/ });
+  assert.equal(db.get('SELECT COUNT(*) AS n FROM servers').n, before, 'refused before a server row exists');
+
+  // The panel's env denylist (SERVER_PORT, LOAD_ENV_FROM_FILE, …) runs in assembleEnv for every
+  // server, blueprint or not; servers-core.test.js covers it.
+});
