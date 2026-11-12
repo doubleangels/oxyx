@@ -65,9 +65,15 @@ function reportNear(serverId, createdAt) {
   /** @type {any} */
   let best = null;
   let bestGap = REPORT_MATCH_MS;
+  // Only the reports inside the match window, through the (server_id,
+  // file_mtime) index. file_mtime is an ISO-8601 UTC string, so a string range
+  // is a time range. The nearest of these few is picked below.
   for (const r of db.all(
-    'SELECT id, filename, file_mtime, exception, summary, suspected_json FROM crash_reports WHERE server_id = ?',
-    serverId
+    `SELECT id, filename, file_mtime, exception, summary, suspected_json FROM crash_reports
+      WHERE server_id = ? AND file_mtime BETWEEN ? AND ?`,
+    serverId,
+    new Date(eventMs - REPORT_MATCH_MS).toISOString(),
+    new Date(eventMs + REPORT_MATCH_MS).toISOString()
   )) {
     const gap = Math.abs(Date.parse(r.file_mtime) - eventMs);
     if (gap <= bestGap) {
@@ -143,4 +149,4 @@ function clearAll(user, visibleIds) {
   return rows.length;
 }
 
-module.exports = { HEALTH_TYPES, counts, list, dismiss, clearAll };
+module.exports = { HEALTH_TYPES, counts, list, dismiss, clearAll, reportNear };
