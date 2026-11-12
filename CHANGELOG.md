@@ -63,6 +63,8 @@ its own dated entry.
 - **Outbound requests refuse the whole IPv6 link-local range.** The check matched only addresses
   starting with `fe80`, not the rest of `fe80::/10`. Deprecated site-local addresses (`fec0::/10`)
   are refused too.
+- **Public status pages are rate limited.** `/status/<slug>` now has a per-IP ceiling
+  (`RATE_LIMIT_STATUS_PER_MIN`, default 120) and may be cached for five seconds.
 
 ## [0.14.1] - 2026-09-21
 

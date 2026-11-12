@@ -409,10 +409,10 @@ function createApp() {
   app.set('sessionMiddleware', sessionMiddleware);
   app.use(originGuard);
 
-  const { apiLimiter, authLimiter } = require('./middleware/rateLimit');
+  const { apiLimiter, authLimiter, statusLimiter } = require('./middleware/rateLimit');
   app.use(['/login', '/login/2fa', '/setup'], authLimiter);
   app.use(require('./routes/auth'));
-  app.use('/status', require('./routes/status')); // public, read-only, opt-in per server
+  app.use('/status', statusLimiter, require('./routes/status')); // public, read-only, opt-in per server
   // Public, read-only API: Bearer-token auth (no cookie), GET-only. Mounted in
   // the public zone - BEFORE requireAuth (there is no session to load) and
   // BEFORE `app.use('/api', apiLimiter)` so the panel-wide per-IP limiter does
