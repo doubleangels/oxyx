@@ -47,6 +47,9 @@ RUN pnpm run build
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     mkdir /prod && cp package.json pnpm-lock.yaml pnpm-workspace.yaml /prod/ && \
     cd /prod && pnpm install --frozen-lockfile --prod --offline --ignore-scripts
+# Drop data the panel never reads (Bedrock tables, icon fonts): ~360 MB.
+COPY scripts/prune-prod-deps.js ./scripts/prune-prod-deps.js
+RUN node scripts/prune-prod-deps.js /prod/node_modules
 
 # Runtime stage: production deps + the app, with the built CSS + JS bundles overlaid.
 FROM node:24-alpine

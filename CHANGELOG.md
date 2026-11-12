@@ -43,6 +43,8 @@ its own dated entry.
   restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
   nothing supervises the process. Unhandled promise rejections are still logged without exiting.
 
+- **A much smaller image.** The Docker build drops data the panel never reads from its dependencies
+  (Minecraft Bedrock tables and icon fonts), cutting the bundled packages from about 530 MB to 170 MB.
 - **The compose file pins the image to a release.** `docker-compose.yml` now uses
   `ghcr.io/doubleangels/oxyx:${OXYX_TAG:-v0.14.1}` instead of `:latest`, so an unattended pull never
   jumps a version. Set `OXYX_TAG` to upgrade. The runtime image no longer contains pnpm.
