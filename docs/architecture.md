@@ -50,8 +50,10 @@ Dependencies flow in one direction:
 ```
 
 - **`web/routes/`**: one router per domain (`players`, `worlds`, `crashes`, `blueprints`, `files`, …).
-  `web/app.js` mounts the top-level ones (`api.js`, the session JSON API that also holds the core
-  server routes and mounts the per-server domain routers; `index.js`, the pages; `auth`, `account`,
+  `web/app.js` mounts the top-level ones (`api.js`, the session JSON API; its routes live in
+  `routes/api/*.js`, one module per domain, all registering on the one router in
+  `routes/api/router.js` in the order `api.js` loads them, which also mounts the per-server domain
+  routers; `index.js`, the pages; `auth`, `account`,
   `tasks`, …). Routers validate with zod, call a service, and return JSON
   or render a view. Business logic does not belong here. Two routers are mounted in the **public
   zone**, before `requireAuth`: `routes/status.js` (opt-in per-server HTML status pages) and
