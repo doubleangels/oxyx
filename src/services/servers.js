@@ -26,20 +26,27 @@ const logger = require('../logger')(path.basename(__filename));
 const { serializeError } = require('../utils/logSanitize');
 const { dirSize } = require('../utils/statSizes');
 const { propEnvMap } = require('../config/field-catalog');
+const { safeJsonParse } = require('../utils/safeJson');
 
 function rowToServer(row, { parseOverrides = true } = {}) {
   if (!row) return null;
+  // A damaged column falls back to empty and is listed in `damagedColumns`, so
+  // the page still renders and can say what needs re-saving.
+  const damaged = [];
+  const parse = (col, fallback) =>
+    safeJsonParse(row[col], fallback, { where: `servers.${col}:${row.id}`, onBad: () => damaged.push(col) });
   const server = {
     ...row,
-    tags: JSON.parse(row.tags_json || '[]'),
-    env: JSON.parse(row.env_json || '{}'),
+    tags: parse('tags_json', []),
+    env: parse('env_json', {}),
     containerName: row.container_name || null,
     networkName: row.network_name || null,
   };
   if (parseOverrides) {
-    server.extraPorts = JSON.parse(row.extra_ports_json || '[]');
-    server.extraBinds = JSON.parse(row.extra_binds_json || '[]');
+    server.extraPorts = parse('extra_ports_json', []);
+    server.extraBinds = parse('extra_binds_json', []);
   }
+  server.damagedColumns = damaged;
   return server;
 }
 

@@ -8,6 +8,7 @@ const httpError = require('../utils/httpError');
 const fs = require('node:fs');
 const path = require('node:path');
 const db = require('../db');
+const { safeJsonParse } = require('../utils/safeJson');
 const { serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const serversService = require('./servers');
@@ -38,7 +39,7 @@ const SUPPORTED = new Set([
 function getMapConfig(serverId) {
   const row = db.get("SELECT * FROM integrations WHERE server_id = ? AND kind = 'bluemap'", serverId);
   if (!row) return { enabled: false, hostPort: null };
-  const cfg = JSON.parse(row.config_json || '{}');
+  const cfg = safeJsonParse(row.config_json, {}, { where: `integrations.config_json:${serverId}:bluemap` });
   return { enabled: Boolean(row.enabled), hostPort: cfg.hostPort || null };
 }
 

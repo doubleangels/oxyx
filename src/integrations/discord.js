@@ -9,6 +9,7 @@
 const path = require('node:path');
 const httpError = require('../utils/httpError');
 const db = require('../db');
+const { safeJsonParse } = require('../utils/safeJson');
 const secrets = require('../services/secrets');
 const settings = require('../services/settings');
 const logger = require('../logger')(path.basename(__filename));
@@ -85,7 +86,7 @@ function row(serverId) {
 /** Masked, UI-safe view of the config. Never returns the webhook URL. */
 function getConfig(serverId) {
   const r = row(serverId);
-  const cfg = r ? JSON.parse(r.config_json || '{}') : {};
+  const cfg = r ? safeJsonParse(r.config_json, {}, { where: 'integrations.config_json:discord' }) : {};
   return {
     enabled: Boolean(r && r.enabled),
     hasWebhook: Boolean(r && r.config_cipher),
@@ -327,7 +328,7 @@ async function pollOnce() {
   const publicHost = settings.getPublicHost();
   const cfgFor = (serverId) => {
     const r = integById.get(serverId);
-    const cfg = r ? JSON.parse(r.config_json || '{}') : {};
+    const cfg = r ? safeJsonParse(r.config_json, {}, { where: 'integrations.config_json:discord' }) : {};
     return {
       enabled: Boolean(r && r.enabled),
       hasWebhook: Boolean(r && r.config_cipher),

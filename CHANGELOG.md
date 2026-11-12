@@ -16,6 +16,10 @@ its own dated entry.
   new connections, closes live console views, lets running requests finish for up to eight seconds,
   and closes the database with its write-ahead log folded back in. Before, Docker waited out its
   timeout and killed it. The compose file now sets `init: true` and a 20 second stop grace period.
+- **One damaged database value no longer takes every page down.** A server whose stored settings,
+  tags or ports could not be read used to turn the whole panel into an error page, because the
+  sidebar reads every server. The damaged value is now treated as empty and logged once, and the
+  server's page says which settings to review and save.
 
 ### Changed
 

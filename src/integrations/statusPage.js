@@ -5,13 +5,14 @@
 
 const httpError = require('../utils/httpError');
 const db = require('../db');
+const { safeJsonParse } = require('../utils/safeJson');
 
 const KIND = 'status-page';
 const SLUG_RE = /^[a-z0-9-]{3,40}$/;
 
 function getStatusPage(serverId) {
   const r = db.get('SELECT * FROM integrations WHERE server_id = ? AND kind = ?', serverId, KIND);
-  const cfg = r ? JSON.parse(r.config_json || '{}') : {};
+  const cfg = r ? safeJsonParse(r.config_json, {}, { where: 'integrations.config_json:status' }) : {};
   return {
     enabled: Boolean(r && r.enabled),
     slug: cfg.slug || null,
@@ -38,7 +39,11 @@ function setStatusPage(serverId, { enabled, slug }) {
     throw httpError(400, 'The page address must be 3 to 40 lowercase letters, numbers, or dashes.');
   const clash = db
     .all('SELECT server_id, config_json FROM integrations WHERE kind = ?', KIND)
-    .find((r) => r.server_id !== serverId && JSON.parse(r.config_json || '{}').slug === slug);
+    .find(
+      (r) =>
+        r.server_id !== serverId &&
+        safeJsonParse(r.config_json, {}, { where: 'integrations.config_json:status' }).slug === slug
+    );
   if (clash) throw httpError(409, `That page address is already in use by another server.`);
 
   db.run(
@@ -59,7 +64,7 @@ function findBySlug(slug) {
   if (!SLUG_RE.test(String(slug))) return null;
   const r = db
     .all('SELECT server_id, config_json FROM integrations WHERE kind = ? AND enabled = 1', KIND)
-    .find((row) => JSON.parse(row.config_json || '{}').slug === slug);
+    .find((row) => safeJsonParse(row.config_json, {}, { where: 'integrations.config_json:status' }).slug === slug);
   return r ? r.server_id : null;
 }
 
