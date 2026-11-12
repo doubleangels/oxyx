@@ -17,6 +17,10 @@
 //   default:  value the image/panel uses when unset (optional)
 //   options:  [{value, label, desc?}] for enum (optional)
 //   min, max, step: for number/range (optional)
+//   pattern:  regex source a text value must fully match, checked on save and
+//             as the form's `pattern` attribute (optional). Keep it valid
+//             under the `v` flag, which browsers use for `pattern`.
+//   patternHelp: one sentence saying what a valid value looks like (with pattern)
 //   mode:     'simple' | 'advanced'       // which wizard mode shows it
 //   section:  section id (matches SECTIONS below)
 //   danger:   true → red styling + extra warning copy (optional)

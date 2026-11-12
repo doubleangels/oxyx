@@ -8,7 +8,7 @@ const httpError = require('../utils/httpError');
 const fs = require('node:fs');
 const path = require('node:path');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const serversService = require('./servers');
 const modsService = require('./mods');
@@ -51,7 +51,7 @@ function mapConfDir(serverId, server) {
   const rel = ['PAPER', 'PURPUR', 'PUFFERFISH', 'LEAF', 'FOLIA', 'SPIGOT'].includes(server.type)
     ? ['plugins', 'BlueMap']
     : ['config', 'bluemap'];
-  return dataPath('servers', serverId, ...rel);
+  return serverPath(serverId, ...rel);
 }
 
 // world/nether/end, matching BlueMap's OWN default map ids exactly - so this
@@ -92,7 +92,7 @@ function writeMapConfigs(serverId) {
     const worldFolder = level + dim.suffix;
     // Nether/end aren't generated until first visited - skip rather than
     // point BlueMap at a dir that doesn't exist yet (same failure this fixes).
-    if (dim.suffix && !fs.existsSync(dataPath('servers', serverId, worldFolder))) continue;
+    if (dim.suffix && !fs.existsSync(serverPath(serverId, worldFolder))) continue;
 
     const file = path.join(mapsDir, dim.file);
     const worldLine = `world: "${worldFolder}"`;

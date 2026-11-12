@@ -9,7 +9,7 @@
 const httpError = require('../utils/httpError');
 const fs = require('node:fs');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const { execCapture } = require('../docker/containers');
 const mojangProfiles = require('./mojangProfiles');
@@ -79,7 +79,7 @@ function prettyDimension(dim) {
 function readJson(serverId, file) {
   if (!FILES.has(file)) throw httpError(400, `Unsupported player file: ${file}`);
   try {
-    const raw = fs.readFileSync(dataPath('servers', serverId, file), 'utf8');
+    const raw = fs.readFileSync(serverPath(serverId, file), 'utf8');
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
@@ -90,8 +90,8 @@ function readJson(serverId, file) {
 
 function writeJson(serverId, file, data) {
   if (!FILES.has(file)) throw httpError(400, `Unsupported player file: ${file}`);
-  const target = dataPath('servers', serverId, file);
-  const tmp = dataPath('servers', serverId, `${file}.${process.pid}-${Date.now()}.tmp`);
+  const target = serverPath(serverId, file);
+  const tmp = serverPath(serverId, `${file}.${process.pid}-${Date.now()}.tmp`);
   fs.mkdirSync(dataPath('servers', serverId), { recursive: true });
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
   fs.renameSync(tmp, target);
@@ -620,7 +620,7 @@ async function deletePlayer(serverId, name, { running = false, actor = 'system' 
     const level = require('./worlds').activeLevelName(server);
     // Every path goes through the guard (never a bare path.join on a uuid that
     // came from a file the Minecraft process wrote).
-    const inWorld = (...segs) => dataPath('servers', serverId, level, ...segs);
+    const inWorld = (...segs) => serverPath(serverId, level, ...segs);
 
     // Playerdata - delete both the modern and legacy .dat (+ .dat_old backups),
     // tolerating either layout or none at all (never-joined players have none).

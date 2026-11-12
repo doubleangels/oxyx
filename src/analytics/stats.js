@@ -7,7 +7,7 @@
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const serversService = require('../services/servers');
 const { activeLevelName } = require('../services/worlds');
 const { uuidToDashed } = require('../services/mojangProfiles');
@@ -116,8 +116,8 @@ async function ingestStats(serverId) {
   // MC 26.x moved stat files from <world>/stats to <world>/players/stats.
   let statsDir;
   try {
-    const modern = dataPath('servers', serverId, level, 'players', 'stats');
-    const legacy = dataPath('servers', serverId, level, 'stats');
+    const modern = serverPath(serverId, level, 'players', 'stats');
+    const legacy = serverPath(serverId, level, 'stats');
     statsDir = (await pathExists(modern)) ? modern : legacy;
   } catch {
     return { players: 0, snapshots: 0 };

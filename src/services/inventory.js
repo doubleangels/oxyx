@@ -24,7 +24,7 @@ const { promisify } = require('node:util');
 const gzipAsync = promisify(zlib.gzip);
 const nbt = require('prismarine-nbt');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const { execCapture, inspectStatus } = require('../docker/containers');
 const logger = require('../logger')(path.basename(__filename));
@@ -62,8 +62,8 @@ function playerdataDir(serverId) {
   const server = require('./servers').getServer(serverId);
   if (!server) throw httpError(404, 'Server not found.');
   const level = require('./worlds').activeLevelName(server);
-  const modern = dataPath('servers', serverId, level, 'players', 'data');
-  const legacy = dataPath('servers', serverId, level, 'playerdata');
+  const modern = serverPath(serverId, level, 'players', 'data');
+  const legacy = serverPath(serverId, level, 'playerdata');
   const has = (dir) => {
     try {
       return fs.readdirSync(dir).some((f) => f.endsWith('.dat'));

@@ -886,7 +886,7 @@ function worldDirsOf(server, serverDir) {
   // renamed/activated world would otherwise be silently missing from exports.
   const level = require('../services/worlds').activeLevelName(server);
   return [level, `${level}_nether`, `${level}_the_end`]
-    .map((name) => ({ name, abs: path.join(serverDir, name) }))
+    .map((name) => ({ name, abs: safeJoin(serverDir, name) }))
     .filter((d) => fs.existsSync(d.abs) && fs.statSync(d.abs).isDirectory());
 }
 

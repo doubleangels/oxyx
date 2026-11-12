@@ -333,10 +333,9 @@ function worldVersionWarnings(server, resolved) {
   const warnings = [];
   try {
     const worlds = require('./worlds');
-    const { dataPath } = require('../storage/pathGuard');
-    const path = require('node:path');
+    const { serverPath } = require('../storage/pathGuard');
     const level = worlds.activeLevelName(server);
-    const worldVersion = worlds.readLevelVersion(path.join(dataPath('servers', server.id), level, 'level.dat'));
+    const worldVersion = worlds.readLevelVersion(serverPath(server.id, level, 'level.dat'));
     if (worldVersion && worldVersion !== resolved.mcVersion) {
       const { parseVersion } = require('./javaMatrix');
       const wv = parseVersion(worldVersion);

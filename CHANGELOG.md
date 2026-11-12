@@ -13,6 +13,10 @@ its own dated entry.
   path in a blueprint manifest must now be a plain name or a relative path inside the server folder.
   A blueprint that names anything else is refused before a server is created, and symlinks inside
   the archive are never followed.
+- **A world save name must be a plain folder name.** World Save Name (and `level-name` in
+  `server.properties`) can no longer contain slashes or start with a dot. Saving such a name is
+  refused, and world, inventory, stats and blueprint actions on a server that already has one stop
+  with a message that says how to fix it, instead of acting on a folder outside that server.
 
 ## [0.14.1] - 2026-09-21
 

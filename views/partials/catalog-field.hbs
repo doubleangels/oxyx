@@ -49,6 +49,7 @@
     {{else}}
       <input class="input max-w-xl font-mono" type="text"
         data-catalog-key="{{key}}" data-catalog-scope="{{scope}}" data-catalog-type="text" data-catalog-default="{{this.default}}"
+        {{#if pattern}}pattern="{{pattern}}" title="{{patternHelp}}"{{/if}}
         placeholder="{{#if (isDefined default)}}{{this.default}}{{else}}Default{{/if}}">
     {{/if}}
 

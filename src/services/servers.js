@@ -304,6 +304,7 @@ async function createServerImpl(input, { actor = 'system', start = false, onProg
   // Same fail-fast idea for the pinning invariant: an unpinned pack selector
   // would make the image re-resolve "latest" on every start (issue #22).
   require('./packPins').assertPinnedPackEnv(input.type, inputEnv);
+  assertEnvPatterns(inputEnv);
   assertInitHeapFits(inputEnv, input.heapMb ?? settings.getDefaults().heapMb);
 
   const id = `srv_${nanoid(8)}`;
@@ -713,6 +714,23 @@ function assertInitHeapFits(env, heapMb) {
 }
 
 /**
+ * Reject env values that break a catalog field's `pattern` (for example a
+ * World Save Name with a slash). Blank values pass: they clear the key.
+ * @param {Record<string, string> | null | undefined} env
+ */
+function assertEnvPatterns(env) {
+  const { getField } = require('../config/field-catalog');
+  for (const [key, value] of Object.entries(env || {})) {
+    const field = getField('env', key);
+    if (!field || !field.pattern || value === undefined || value === null || String(value) === '') continue;
+    if (!new RegExp(`^(?:${field.pattern})$`, 'v').test(String(value)) || String(value).includes('\0')) {
+      logger.debug('Rejected an env value that breaks its catalog pattern.', { key });
+      throw httpError(400, `${field.label} is not valid. ${field.patternHelp || ''}`.trim());
+    }
+  }
+}
+
+/**
  * Build the config-column diff, SET clause, params, and recreate flag for a
  * config change. PURE: reads, never writes - the settings save-confirmation
  * preview reuses exactly the decisions the PATCH makes (same env-merge
@@ -757,6 +775,7 @@ function computeServerDiff(id, changes) {
     sets.push('tags_json = ?');
     params.push(JSON.stringify(changes.tags));
   }
+  if (changes.env) assertEnvPatterns(changes.env);
   if (changes.env || changes.heapMb !== undefined) {
     assertInitHeapFits(changes.env || before.env, changes.heapMb ?? before.heap_mb);
   }

@@ -22,7 +22,7 @@ const { extractZip, MAX_EXTRACT_BYTES, MAX_EXTRACT_ENTRIES } = require('../utils
 const tar = require('tar');
 const { nanoid } = require('nanoid');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const { execCapture, inspectStatus } = require('../docker/containers');
 const { serializeError } = require('../utils/logSanitize');
@@ -32,6 +32,7 @@ const library = require('./library');
 const { withSaveLock } = require('./serverLocks');
 const { guardOp } = require('./opLock');
 const logger = require('../logger')(path.basename(__filename));
+const { isValidLevelName } = require('../utils/levelName');
 
 // Run the save-off/flush → copy → save-on dance under the shared per-server save
 // lock when the server is running, so it can't overlap a concurrent backup or
@@ -495,7 +496,7 @@ async function installToServerImpl(libraryId, serverId, { mode = 'replace', newN
     });
   } else {
     targetLevel = sanitizeWorldName(newName || lib.name);
-    if (fs.existsSync(dataPath('servers', serverId, targetLevel))) {
+    if (fs.existsSync(serverPath(serverId, targetLevel))) {
       throw httpError(409, `A world named "${targetLevel}" already exists on this server. Pick another name.`);
     }
   }
@@ -527,10 +528,10 @@ async function installToServerImpl(libraryId, serverId, { mode = 'replace', newN
       const mainStage = path.join(tmpDir, `__main-${nanoid(4)}`);
       await fsp.mkdir(mainStage, { recursive: true });
       for (const e of mainTops) await moveEntry(path.join(tmpDir, e.name), path.join(mainStage, e.name));
-      const targets = [{ stage: mainStage, target: dataPath('servers', serverId, targetLevel) }];
+      const targets = [{ stage: mainStage, target: serverPath(serverId, targetLevel) }];
       for (const e of dimTops) {
         const suffix = e.name.endsWith('_the_end') ? '_the_end' : '_nether';
-        targets.push({ stage: path.join(tmpDir, e.name), target: dataPath('servers', serverId, targetLevel + suffix) });
+        targets.push({ stage: path.join(tmpDir, e.name), target: serverPath(serverId, targetLevel + suffix) });
       }
       const tombstones = [];
       try {
@@ -560,14 +561,14 @@ async function installToServerImpl(libraryId, serverId, { mode = 'replace', newN
       }
       for (const { tomb } of tombstones) await fsp.rm(tomb, { recursive: true, force: true }).catch(() => {});
     } else {
-      const mainDir = dataPath('servers', serverId, targetLevel);
+      const mainDir = serverPath(serverId, targetLevel);
       await fsp.mkdir(mainDir, { recursive: true });
       for (const e of mainTops) {
         await moveEntry(path.join(tmpDir, e.name), path.join(mainDir, e.name));
       }
       for (const e of dimTops) {
         const suffix = e.name.endsWith('_the_end') ? '_the_end' : '_nether';
-        await moveEntry(path.join(tmpDir, e.name), dataPath('servers', serverId, targetLevel + suffix));
+        await moveEntry(path.join(tmpDir, e.name), serverPath(serverId, targetLevel + suffix));
       }
     }
   } finally {
@@ -601,7 +602,7 @@ function copyWarnings(sourceServerId, targetServerId) {
   const target = mustServer(targetServerId);
   const level = activeLevelName(source);
   const version =
-    readLevelVersion(dataPath('servers', sourceServerId, level, 'level.dat')) ||
+    readLevelVersion(serverPath(sourceServerId, level, 'level.dat')) ||
     (source.mc_version !== 'LATEST' && source.mc_version !== 'SNAPSHOT' ? source.mc_version : null);
   return compatWarnings({ flavor: source.type, version }, target);
 }
@@ -656,7 +657,7 @@ async function duplicateWorldImpl(serverId, worldName, { actor = 'system' } = {}
   if (!fs.existsSync(dims[0])) throw httpError(404, `No world named "${worldName}" on this server.`);
 
   let copyName = `${worldName}-copy`;
-  for (let i = 2; fs.existsSync(dataPath('servers', serverId, copyName)); i++) copyName = `${worldName}-copy${i}`;
+  for (let i = 2; fs.existsSync(serverPath(serverId, copyName)); i++) copyName = `${worldName}-copy${i}`;
 
   const sizeBytes = await dirsSize(dims);
   indexer.assertUnderQuota(server, sizeBytes);
@@ -674,7 +675,7 @@ async function duplicateWorldImpl(serverId, worldName, { actor = 'system' } = {}
       async () => {
         for (const dim of dims) {
           const suffix = path.basename(dim).slice(worldName.length);
-          await fsp.cp(dim, dataPath('servers', serverId, copyName + suffix), { recursive: true });
+          await fsp.cp(dim, serverPath(serverId, copyName + suffix), { recursive: true });
         }
       },
       actor
@@ -706,13 +707,13 @@ async function renameWorldImpl(serverId, worldName, newName, { actor = 'system' 
   if (await isRunning(serverId)) throw httpError(409, 'Stop the server before renaming worlds.');
   const dims = serverWorldDims(serverId, worldName);
   if (!fs.existsSync(dims[0])) throw httpError(404, `No world named "${worldName}" on this server.`);
-  if (fs.existsSync(dataPath('servers', serverId, clean))) {
+  if (fs.existsSync(serverPath(serverId, clean))) {
     throw httpError(409, `A world named "${clean}" already exists on this server.`);
   }
 
   for (const dim of dims) {
     const suffix = path.basename(dim).slice(worldName.length);
-    await moveEntry(dim, dataPath('servers', serverId, clean + suffix));
+    await moveEntry(dim, serverPath(serverId, clean + suffix));
   }
 
   const wasActive = worldName === activeLevelName(server);
@@ -735,7 +736,7 @@ async function activateWorldImpl(serverId, worldName, { actor = 'system' } = {})
   const server = mustServer(serverId);
   checkWorldName(worldName);
   if (await isRunning(serverId)) throw httpError(409, 'Stop the server before switching worlds.');
-  if (!fs.existsSync(dataPath('servers', serverId, worldName, 'level.dat'))) {
+  if (!fs.existsSync(serverPath(serverId, worldName, 'level.dat'))) {
     throw httpError(404, `No world named "${worldName}" on this server.`);
   }
   const previous = activeLevelName(server);
@@ -991,9 +992,23 @@ async function deleteLibraryWorld(id, { actor = 'system' } = {}) {
 // ---------------------------------------------------------------------------
 // server.properties + level helpers
 
-/** Active level name: LEVEL env wins, then server.properties, then 'world'. */
+/**
+ * Active level name: LEVEL env wins, then server.properties, then 'world'.
+ * Both sources are user-editable (Settings, the file manager), so the name is
+ * validated here, once, for every caller. An invalid name refuses the
+ * operation instead of falling back: a silent fallback would let a destructive
+ * call (reset, replace) act on a world the user did not mean.
+ */
 function activeLevelName(server) {
-  return (server.env && server.env.LEVEL) || readProps(server.id).get('level-name') || 'world';
+  const name = (server.env && server.env.LEVEL) || readProps(server.id).get('level-name') || 'world';
+  if (!isValidLevelName(name)) {
+    logger.warn('Refused an invalid world folder name.', { serverId: server.id });
+    throw httpError(
+      400,
+      'The world save name for this server is not a plain folder name. Change World Save Name in Settings, or level-name in server.properties, to a name without slashes that does not start with a dot.'
+    );
+  }
+  return name;
 }
 
 /** Parse server.properties into a Map (empty when missing). */
@@ -1047,10 +1062,10 @@ function setActiveLevel(server, levelName, { actor }) {
 
 /** Existing dim dirs for a world: [main, main_nether?, main_the_end?] (absolute). */
 function serverWorldDims(serverId, worldName) {
-  const main = dataPath('servers', serverId, worldName);
+  const main = serverPath(serverId, worldName);
   const dims = [main];
   for (const suffix of DIM_SUFFIXES) {
-    const sibling = dataPath('servers', serverId, worldName + suffix);
+    const sibling = serverPath(serverId, worldName + suffix);
     if (fs.existsSync(sibling)) dims.push(sibling);
   }
   return dims;

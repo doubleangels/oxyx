@@ -10,7 +10,7 @@ const nbt = require('prismarine-nbt');
 const { execCapture } = require('../docker/containers');
 const { cleanText } = require('../utils/ansi');
 const { recordEvent } = require('../events');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const servers = require('./servers');
 
 // camelCase (≤1.21) -> snake_case (26.x). Every op tries the snake_case form
@@ -422,7 +422,7 @@ async function readActiveLevelData(serverId) {
   const server = require('./servers').getServer(serverId);
   if (!server) return null;
   const level = require('./worlds').activeLevelName(server);
-  const file = dataPath('servers', serverId, level, 'level.dat');
+  const file = serverPath(serverId, level, 'level.dat');
   try {
     const { parsed } = await nbt.parse(await fs.promises.readFile(file));
     const s = nbt.simplify(parsed);

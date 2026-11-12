@@ -106,10 +106,22 @@ function dataPath(...parts) {
   return safeJoin(config.dataDir, ...parts);
 }
 
+/**
+ * Resolve `parts` under ONE server's own folder. Unlike `dataPath('servers',
+ * id, …)`, which only stops an escape from the data root, this also refuses a
+ * segment such as `../otherServer/world` that stays inside the data root but
+ * leaves the server's folder. Use it whenever a segment is not a literal.
+ * @param {string} serverId
+ * @param {...string} parts
+ */
+function serverPath(serverId, ...parts) {
+  return safeJoin(dataPath('servers', serverId), ...parts);
+}
+
 /** True when `candidate` (absolute) lies inside the data root. */
 function isInsideDataDir(candidate) {
   const rel = path.relative(config.dataDir, path.resolve(candidate));
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
-module.exports = { safeJoin, dataPath, isInsideDataDir, PathEscapeError };
+module.exports = { safeJoin, dataPath, serverPath, isInsideDataDir, PathEscapeError };

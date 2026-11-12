@@ -13,7 +13,7 @@ const crypto = require('node:crypto');
 const { pipeline } = require('node:stream/promises');
 const { nanoid } = require('nanoid');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const { safeFetch } = require('../utils/urlGuard');
 const contentHashes = require('../utils/contentHashes');
@@ -307,7 +307,7 @@ async function installToServer(libraryId, serverId, destRel, { filename } = {}) 
   // container-runs-as-panel-user has files owned by uid 1000. Lazy require breaks
   // the servers<->library cycle.
   await require('./servers').ensureOwnership(serverId);
-  const destDir = dataPath('servers', serverId, destRel);
+  const destDir = serverPath(serverId, destRel);
   await fsp.mkdir(destDir, { recursive: true });
   const target = path.join(destDir, sanitizeFilename(filename || lib.filename));
   // Install via a temp sibling then atomically rename over the target, so a
