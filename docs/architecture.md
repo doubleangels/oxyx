@@ -266,6 +266,8 @@ Cross-cutting:
 `pnpm run build` = `build:css` (Tailwind → `public/css/app.css`) + `build:js` (esbuild →
 `public/dist/js/`, ESM with code-splitting). `postinstall` runs **CSS only**. `public/css/app.css`
 and `public/dist/` are gitignored build artifacts; the Dockerfile build stage runs the full
-`pnpm run build` and copies `public/` into the runtime image. Static assets are served
-`immutable`/long-cache for fingerprinted files, short-cache for CSS/JS, and `no-cache` for HTML and
-`/api`.
+`pnpm run build` and copies `public/` into the runtime image. esbuild names every output
+`<name>-<hash>.js` and writes `public/dist/js/manifest.json`; views reference scripts and the
+stylesheet through the `{{asset}}` helper, which returns the hashed bundle name (or
+`/css/app.css?v=<content hash>`). Those URLs, fonts and icons are served `immutable` for a year;
+unhashed CSS/JS (the no-build dev fallback), HTML and `/api` are `no-cache`.
