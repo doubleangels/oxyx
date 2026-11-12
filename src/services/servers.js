@@ -430,16 +430,9 @@ async function createServerImpl(input, { actor = 'system', start = false, onProg
       });
     });
     db.run('DELETE FROM servers WHERE id = ?', id);
-    try {
-      fs.rmSync(dataPath('servers', id), { recursive: true, force: true });
-    } catch {
-      /* best effort */
-    }
-    try {
-      fs.rmSync(dataPath('logs', id), { recursive: true, force: true });
-    } catch {
-      /* best effort */
-    }
+    // Async: a failed create can leave a half-downloaded modpack behind.
+    await fsp.rm(dataPath('servers', id), { recursive: true, force: true }).catch(() => {});
+    await fsp.rm(dataPath('logs', id), { recursive: true, force: true }).catch(() => {});
     if (err.statusCode === 409 && input.containerName) {
       throw httpError(409, `Container name "${input.containerName}" is already in use by another Docker container.`);
     }
