@@ -37,6 +37,9 @@ its own dated entry.
 
 ### Security
 
+- **Dependency updates for published advisories:** Handlebars 4.7.10 (two critical template-compile
+  injection issues), body-parser 2.4, multer 2.5, zod 4.6.7 and source-map-js 1.2.2 (denial of
+  service).
 - **Optional Docker socket proxy.** `deploy/docker-compose.socket-proxy.yml` runs the panel without
   the raw Docker socket: a proxy sidecar passes on only containers, exec, images, networks, events
   and the version and info probes.
