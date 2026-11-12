@@ -9,6 +9,9 @@ its own dated entry.
 
 ### Fixed
 
+- **Keyboard and screen reader basics.** Every page now starts with a Skip to Content link that
+  jumps past the sidebar and top bar. Every table header declares which cells it labels, and text
+  fields show the same focus outline as buttons instead of only a faint border change.
 - **Large uploads no longer stop after five minutes.** Node ends any request that runs longer than
   300 seconds, which cut off uploads over roughly 750 MB on a 20 Mbps connection. Uploads are now
   limited only by their size caps and the disk quota.
