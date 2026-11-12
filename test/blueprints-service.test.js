@@ -80,7 +80,34 @@ test('importPreview rejects missing, non-JSON, and invalid manifests', async () 
 
 test('importPreview rejects config paths that escape the server dir', async () => {
   const zip = await writeZip('d.zip', { 'manifest.json': JSON.stringify(manifest({ configFiles: ['../evil'] })) });
-  await assert.rejects(bp.importPreview(zip), /escapes the server directory/);
+  await assert.rejects(bp.importPreview(zip), { status: 400, message: /outside the server folder/ });
+});
+
+test('importBlueprint rejects an overlay filename that walks out of the payload (F-27)', async () => {
+  const before = require('../src/db').get('SELECT COUNT(*) AS n FROM servers').n;
+  const m = manifest({
+    embedFiles: true,
+    overlay: [{ name: 'Sneaky', kind: 'mod', filename: '../../../../panel.db' }],
+  });
+  const zip = await writeZip('f27a.zip', {
+    'manifest.json': JSON.stringify(m),
+    'payload/overlay/placeholder.jar': 'x',
+  });
+  await assert.rejects(bp.importBlueprint(zip, {}, { actor: 'tester' }), { status: 400 });
+  for (const filename of ['/etc/passwd', 'a\\..\\b', '..', '.']) {
+    const z = await writeZip('f27b.zip', {
+      'manifest.json': JSON.stringify(manifest({ overlay: [{ name: 'X', kind: 'mod', filename }] })),
+    });
+    await assert.rejects(bp.importPreview(z), { status: 400 }, filename);
+  }
+  assert.equal(require('../src/db').get('SELECT COUNT(*) AS n FROM servers').n, before, 'no server created');
+});
+
+test('importBlueprint rejects a nested traversal in configFiles (F-27)', async () => {
+  for (const rel of ['config/../../../panel.db', 'config//x', '/abs/path', 'config/./x']) {
+    const zip = await writeZip('f27c.zip', { 'manifest.json': JSON.stringify(manifest({ configFiles: [rel] })) });
+    await assert.rejects(bp.importBlueprint(zip, {}, { actor: 'tester' }), { status: 400 }, rel);
+  }
 });
 
 test('importPreview collects warnings', async () => {

@@ -5,6 +5,15 @@ All notable changes to this project are documented here. The format is based on
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each push is cut as a new release with
 its own dated entry.
 
+## [Unreleased]
+
+### Security
+
+- **Blueprint import only reads files from its own archive.** An overlay file name or config file
+  path in a blueprint manifest must now be a plain name or a relative path inside the server folder.
+  A blueprint that names anything else is refused before a server is created, and symlinks inside
+  the archive are never followed.
+
 ## [0.14.1] - 2026-09-21
 
 Minecraft version updates now have to be earned: a newer version is only offered when every mod on
