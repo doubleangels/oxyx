@@ -55,6 +55,11 @@ its own dated entry.
   `no-new-privileges` and a process limit (`CONTAINER_PIDS_LIMIT`, default 4096).
 - **World archives in tar format no longer extract links.** Symbolic links and hard links inside an
   uploaded `.tar` or `.tar.gz` world are skipped. Only regular files and folders are written.
+- **First-run setup only answers to known host names.** Until the admin account exists, the panel
+  refuses requests for any host name other than `localhost`, an IP address, or a name listed in the
+  new `PANEL_ALLOWED_HOSTS`. This stops a web page from claiming setup through DNS rebinding. If you
+  set up a fresh panel through a reverse proxy, add its name to `PANEL_ALLOWED_HOSTS` first. Set the
+  variable to enforce the list after setup too.
 
 ## [0.14.1] - 2026-09-21
 

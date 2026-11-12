@@ -184,6 +184,8 @@ function createApp() {
   if (config.trustProxy !== false) app.set('trust proxy', config.trustProxy);
 
   app.use(require('./middleware/securityHeaders').securityHeaders);
+  // Before everything that answers a request: refuse rebinding host names.
+  app.use(require('./middleware/hostGuard').hostGuard);
 
   // Gzip/deflate text responses (HTML, JS, CSS, JSON). Already-compressed bodies
   // (PNG icons, zip/jar downloads, backups) are skipped by the default

@@ -270,6 +270,13 @@ const config = {
   // True when bound to a non-loopback address - used to warn about the open
   // first-run setup window on an exposed panel.
   isExposedBind: host !== '127.0.0.1' && host !== 'localhost' && host !== '::1',
+  // Host names (lowercase, no port) the panel answers to, from PANEL_ALLOWED_HOSTS
+  // (comma-separated). Loopback names and IP addresses always pass. '*' turns
+  // the check off. See middleware/hostGuard.js for when it is enforced.
+  allowedHosts: (process.env.PANEL_ALLOWED_HOSTS || '')
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean),
   sessionSecret: resolveSessionSecret(),
   cfApiKeySeed: process.env.CF_API_KEY || '',
   trustProxy: resolveTrustProxy(),
