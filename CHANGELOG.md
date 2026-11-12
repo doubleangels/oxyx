@@ -60,6 +60,9 @@ its own dated entry.
   new `PANEL_ALLOWED_HOSTS`. This stops a web page from claiming setup through DNS rebinding. If you
   set up a fresh panel through a reverse proxy, add its name to `PANEL_ALLOWED_HOSTS` first. Set the
   variable to enforce the list after setup too.
+- **Outbound requests refuse the whole IPv6 link-local range.** The check matched only addresses
+  starting with `fe80`, not the rest of `fe80::/10`. Deprecated site-local addresses (`fec0::/10`)
+  are refused too.
 
 ## [0.14.1] - 2026-09-21
 

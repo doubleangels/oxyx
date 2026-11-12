@@ -32,6 +32,12 @@ test('isBlockedIp allows public IPv4', () => {
 test('isBlockedIp blocks loopback/link-local/ULA IPv6 and maps ::ffff:', () => {
   assert.equal(isBlockedIp('::1'), true);
   assert.equal(isBlockedIp('fe80::1'), true);
+  // The whole of fe80::/10, not just the "fe80" prefix (F-15).
+  for (const ip of ['fe90::1', 'fea0::1', 'feb0::1', 'febf:ffff::1', 'FE81::1'])
+    assert.equal(isBlockedIp(ip), true, ip);
+  assert.equal(isBlockedIp('fec0::1'), true, 'deprecated site-local');
+  assert.equal(isBlockedIp('fe7f::1'), false);
+  assert.equal(isBlockedIp('2606:4700::1111'), false, 'public v6 still passes');
   assert.equal(isBlockedIp('fc00::1'), true);
   assert.equal(isBlockedIp('fd12::1'), true);
   assert.equal(isBlockedIp('::ffff:127.0.0.1'), true);
