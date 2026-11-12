@@ -1,0 +1,318 @@
+// Schedules page: New-task modal (cron builder with live next-run preview),
+// enable/disable toggle, delete, and edit (= delete + recreate, labeled).
+
+import { toast } from '../lib/toast.js';
+import { undoableDelete } from '../lib/undo.js';
+import { friendlyError } from '../lib/errors.js';
+import { openModal } from '../lib/modal.js';
+import { enhanceAll } from '../lib/select.js';
+import { formatDateTime } from '../lib/datetime.js';
+import { escapeHtml } from '../lib/format.js';
+
+const table = document.getElementById('schedules-table'); // absent when the list is empty
+const dataEl = document.getElementById('msm-schedule-data');
+if (dataEl) init();
+
+function readJson(attr) {
+  try {
+    return JSON.parse(dataEl.dataset[attr] || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function init() {
+  const servers = readJson('servers');
+  const taskTypes = readJson('taskTypes');
+
+  const newBtn = document.getElementById('schedule-new');
+  newBtn?.addEventListener('click', () =>
+    scheduleModal({ servers, taskTypes, preset: { serverId: newBtn.dataset.focusServer || '' } })
+  );
+
+  table?.addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-schedule-row]');
+    if (!row) return;
+
+    const runBtn = e.target.closest('[data-schedule-run]');
+    if (runBtn) {
+      runBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/schedules/${row.dataset.scheduleId}/run`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false)
+          throw new Error(data.error || friendlyError(res, { action: 'run that task' }));
+        toast(`${row.dataset.task} is running. Follow it in the task tray.`, { kind: 'info' });
+      } catch (err) {
+        toast(err.message, { kind: 'error' });
+      } finally {
+        setTimeout(() => (runBtn.disabled = false), 1500);
+      }
+      return;
+    }
+    const delBtn = e.target.closest('[data-schedule-delete]');
+    if (delBtn) {
+      // Undo instead of an "are you sure?": the row goes now, the delete ten
+      // seconds later unless Undo is pressed.
+      const tbody = row.closest('tbody');
+      undoableDelete({
+        message: `Deleted the ${row.dataset.task} schedule.`,
+        hide: () => row.classList.add('hidden'),
+        restore: () => row.classList.remove('hidden'),
+        commit: (opts) => fetch(`/api/schedules/${row.dataset.scheduleId}`, { method: 'DELETE', ...opts }),
+        failed: 'delete that schedule',
+        onCommitted: () => {
+          row.remove();
+          if (tbody && !tbody.querySelector('[data-schedule-row]')) setTimeout(() => location.reload(), 600);
+        },
+      });
+    } else if (e.target.closest('[data-schedule-edit]')) {
+      let payload = {};
+      try {
+        payload = JSON.parse(row.dataset.payload || '{}');
+      } catch {}
+      scheduleModal({
+        servers,
+        taskTypes,
+        edit: {
+          id: row.dataset.scheduleId,
+          serverId: row.dataset.serverId || '',
+          taskType: row.dataset.taskType,
+          cron: row.dataset.cron,
+          payload,
+        },
+      });
+    }
+  });
+
+  // Toggle: the checkbox is the source of truth; revert it if the API fails.
+  table?.addEventListener('change', async (e) => {
+    const input = e.target.closest('[data-schedule-toggle]');
+    if (!input) return;
+    const row = input.closest('[data-schedule-row]');
+    const enabled = input.checked;
+    input.disabled = true; // lock the toggle in flight - keeps the switch visual
+    try {
+      const res = await fetch(`/api/schedules/${row.dataset.scheduleId}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false)
+        throw new Error(data.error || friendlyError(res, { action: 'update that schedule' }));
+      toast(`Schedule ${enabled ? 'enabled' : 'disabled'}.`);
+    } catch (err) {
+      input.checked = !enabled;
+      toast(err.message, { kind: 'error', timeout: 8000 });
+    } finally {
+      input.disabled = false;
+    }
+  });
+}
+
+// Common timings, one click instead of writing cron by hand (it stays editable).
+const CRON_PRESETS = [
+  { label: 'Every Night at 4 AM', cron: '0 4 * * *' },
+  { label: 'Every 6 Hours', cron: '0 */6 * * *' },
+  { label: 'Every 12 Hours', cron: '0 */12 * * *' },
+  { label: 'Every Hour', cron: '0 * * * *' },
+  { label: 'Every Sunday at 4 AM', cron: '0 4 * * 0' },
+  { label: 'Weekdays at 6 AM', cron: '0 6 * * 1-5' },
+];
+// Tasks that take a server down, so they can warn the players first.
+const WARNABLE = new Set(['restart', 'stop', 'restart-all']);
+
+function scheduleModal({ servers, taskTypes, edit = null, preset = null }) {
+  const content = document.createElement('div');
+  content.innerHTML = `
+    <label class="label">Runs on</label>
+    <select class="input" data-sc-server data-label="Runs on">
+      <option value="">Panel-Wide (No Server)</option>
+      ${servers.map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join('')}
+    </select>
+    <label class="label mt-3">Task</label>
+    <select class="input" data-sc-type data-label="Task type">
+      ${taskTypes.map((t) => `<option value="${escapeHtml(t.value)}" data-desc="${t.serverScoped ? 'Needs a server' : 'Panel-wide'}">${escapeHtml(t.label)}</option>`).join('')}
+    </select>
+    <div class="mt-3 hidden" data-sc-cmdwrap>
+      <label class="label">RCON Command</label>
+      <input class="input font-mono" data-sc-cmd placeholder="say Server restarts in 5 minutes" autocomplete="off">
+    </div>
+    <div class="mt-3 hidden" data-sc-shrinkwrap>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="msm-check" data-sc-shrink> Shrink the World After Each Backup <span class="text-xs text-ink-faint">(removes rarely-visited chunks; only runs while the server is stopped)</span></label>
+    </div>
+    <div class="mt-3 hidden" data-sc-warnwrap>
+      <label class="label" for="sc-warn">Warn Players First</label>
+      <select class="input" id="sc-warn" data-sc-warn data-label="Warn players first">
+        <option value="0">No Warning</option>
+        <option value="60">1 Minute</option>
+        <option value="120">2 Minutes</option>
+        <option value="300">5 Minutes</option>
+        <option value="600">10 Minutes</option>
+        <option value="900">15 Minutes</option>
+      </select>
+      <p class="help">A countdown in the game chat, skipped when nobody is online.</p>
+    </div>
+    <span class="label mt-3">When</span>
+    <div class="flex flex-wrap gap-1.5" data-sc-presets>
+      ${CRON_PRESETS.map((p) => `<button type="button" class="chip" data-cron="${escapeHtml(p.cron)}">${escapeHtml(p.label)}</button>`).join('')}
+    </div>
+    <label class="label mt-3" for="sc-cron">Cron Expression</label>
+    <input class="input font-mono" id="sc-cron" data-sc-cron placeholder="0 4 * * *" autocomplete="off" spellcheck="false">
+    <p class="help">Five fields: minute hour day-of-month month day-of-week. Example: <b class="font-mono">0 4 * * *</b> = daily at 04:00.</p>
+    <div class="mt-2 rounded-md border border-line bg-raised p-2.5 text-xs" data-sc-preview>
+      <span class="text-ink-faint">Type a cron expression to preview the next runs.</span>
+    </div>
+    ${edit ? '<p class="help mt-3">Saving creates the updated schedule and then removes the old one. The timing carries over without a gap.</p>' : ''}`;
+
+  const serverSel = content.querySelector('[data-sc-server]');
+  const typeSel = content.querySelector('[data-sc-type]');
+  const cmdWrap = content.querySelector('[data-sc-cmdwrap]');
+  const cmdInput = content.querySelector('[data-sc-cmd]');
+  const shrinkWrap = content.querySelector('[data-sc-shrinkwrap]');
+  const shrinkInput = content.querySelector('[data-sc-shrink]');
+  const cronInput = content.querySelector('[data-sc-cron]');
+  const preview = content.querySelector('[data-sc-preview]');
+  const warnWrap = content.querySelector('[data-sc-warnwrap]');
+  const warnSel = content.querySelector('[data-sc-warn]');
+  const presetRow = content.querySelector('[data-sc-presets]');
+  const markPreset = () => {
+    for (const b of presetRow.querySelectorAll('[data-cron]'))
+      b.setAttribute('aria-pressed', String(b.dataset.cron === cronInput.value.trim()));
+  };
+  presetRow.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cron]');
+    if (!b) return;
+    cronInput.value = b.dataset.cron;
+    cronInput.dispatchEvent(new Event('input'));
+  });
+
+  if (!edit && preset && preset.serverId) serverSel.value = preset.serverId;
+  if (edit) {
+    serverSel.value = edit.serverId || '';
+    typeSel.value = edit.taskType;
+    cronInput.value = edit.cron;
+    if (edit.payload && edit.payload.command) cmdInput.value = edit.payload.command;
+    if (edit.payload && edit.payload.shrink) shrinkInput.checked = true;
+  }
+  // A new restart or stop warns for 5 minutes unless changed; an existing one
+  // keeps exactly what it had (none, for schedules made before this option).
+  warnSel.value = String(edit ? (edit.payload && edit.payload.warnSeconds) || 0 : 300);
+
+  const typeMeta = () => taskTypes.find((t) => t.value === typeSel.value) || {};
+  const syncTypeUi = () => {
+    cmdWrap.classList.toggle('hidden', typeSel.value !== 'rcon');
+    shrinkWrap.classList.toggle('hidden', typeSel.value !== 'backup' && typeSel.value !== 'backup-all');
+    warnWrap.classList.toggle('hidden', !WARNABLE.has(typeSel.value));
+    // Panel-wide tasks ignore the server - disable the picker instead of
+    // silently discarding whatever was selected in it.
+    const scoped = Boolean(typeMeta().serverScoped);
+    serverSel.disabled = !scoped;
+    if (!scoped) serverSel.value = '';
+  };
+  typeSel.addEventListener('change', syncTypeUi);
+  syncTypeUi();
+
+  let previewTimer;
+  const renderPreview = async () => {
+    const expr = cronInput.value.trim();
+    if (!expr) {
+      preview.innerHTML = '<span class="text-ink-faint">Type a cron expression to preview the next runs.</span>';
+      return;
+    }
+    try {
+      const res = await fetch(`/api/schedules/preview?cron=${encodeURIComponent(expr)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        preview.innerHTML = `<span class="text-danger">${escapeHtml(data.error || "That cron expression isn't valid.")}</span>`;
+        return;
+      }
+      preview.innerHTML = `<span class="text-ink-faint">Next runs:</span> ${data.runs
+        .map((iso) => `<span class="mr-2 font-mono">${escapeHtml(formatDateTime(iso))}</span>`)
+        .join('')}`;
+    } catch {
+      preview.innerHTML = '<span class="text-ink-faint">Preview unavailable (network error).</span>';
+    }
+  };
+  cronInput.addEventListener('input', () => {
+    markPreset();
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(renderPreview, 300);
+  });
+  if (edit) renderPreview();
+  markPreset();
+
+  openModal({
+    title: edit ? `Edit Schedule: ${edit.taskType}` : 'New Scheduled Task',
+    content,
+    actions: [
+      { label: 'Cancel', kind: 'ghost' },
+      {
+        label: edit ? 'Save Changes' : 'Create Schedule',
+        kind: 'primary',
+        busyLabel: edit ? 'Saving…' : 'Creating…',
+        onClick: async () => {
+          const cron = cronInput.value.trim();
+          if (!cron) {
+            toast('Enter a cron expression.', { kind: 'error' });
+            return false;
+          }
+          const meta = typeMeta();
+          const serverId = serverSel.value || null;
+          if (meta.serverScoped && !serverId) {
+            toast(`"${meta.label}" runs on a server. Pick one first.`, { kind: 'error' });
+            return false;
+          }
+          const payload = {};
+          if (typeSel.value === 'rcon') {
+            const command = cmdInput.value.trim();
+            if (!command) {
+              toast('Enter the RCON command to run.', { kind: 'error' });
+              return false;
+            }
+            payload.command = command;
+          }
+          if ((typeSel.value === 'backup' || typeSel.value === 'backup-all') && shrinkInput.checked)
+            payload.shrink = true;
+          if (WARNABLE.has(typeSel.value) && Number(warnSel.value) > 0) payload.warnSeconds = Number(warnSel.value);
+          const body = {
+            serverId: meta.serverScoped ? serverId : null,
+            taskType: typeSel.value,
+            cron,
+            payload,
+          };
+          try {
+            // CREATE first, delete after: the old order destroyed the schedule
+            // when the re-create failed, leaving a stale row over lost data.
+            const res = await fetch('/api/schedules', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === false)
+              throw new Error(data.error || friendlyError(res, { action: 'save that schedule' }));
+            if (edit) {
+              const del = await fetch(`/api/schedules/${edit.id}`, { method: 'DELETE' });
+              const delData = await del.json().catch(() => ({}));
+              if (!del.ok || delData.ok === false) {
+                // Worst case is a duplicate, never a loss - say so plainly.
+                toast('Saved as a new schedule, but the old one could not be removed. Delete it manually.', {
+                  kind: 'warn',
+                  timeout: 10000,
+                });
+              }
+            }
+            toast(edit ? 'Schedule updated.' : 'Schedule created.');
+            setTimeout(() => location.reload(), 600);
+          } catch (err) {
+            toast(err.message, { kind: 'error', timeout: 9000 });
+            return false;
+          }
+        },
+      },
+    ],
+  });
+  enhanceAll(content);
+}

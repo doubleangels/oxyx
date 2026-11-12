@@ -1,0 +1,37 @@
+# The dashboard
+
+[← Back to docs index](README.md)
+
+The dashboard is your home base: every server, its live status, and a running feed of what's been happening.
+
+![Dashboard](images/dashboard.png)
+
+## The summary tiles
+
+If Docker can't be reached, that warning comes first, above everything else. Then, across the top:
+
+- **Servers online**: how many of your servers are currently running, out of the total, with a count of the ones in any other state (stopped, crashed, starting…) right under it.
+- **Players connected**: the total player count across all running servers.
+- **Docker**: whether the panel can reach the Docker daemon, and its version.
+
+A second row adds **Memory allotted** (and how much is in use), **Storage used** across all server data folders, **Health · 24h** (crashes, out-of-memory stops, and auto-restarts in the last day), and **Updates** split into mods and server-level updates ([see Updates](updates.md)).
+
+Your **Servers** come next, then the **Resource Overview** that charts every server's share of memory and CPU, then **Recent Activity**.
+
+## Server cards
+
+Each server shows as a card with its status (Running, Starting, Stopped, Crashed, and in-between states such as Unhealthy or Stalled), the type and Minecraft version, its game port, and its tags. Every card shows **players** and **disk** use against the quota; running servers also show live **CPU** and **memory**, updated continuously.
+
+Every card also shows a **Last Backup** line ("3 days ago"). It switches to the warning color when the newest backup is more than 7 days old, or when a server more than a day old has never been backed up, so a server that is silently missing its backups stands out. A brand-new server gets a day of grace before it counts as never backed up.
+
+Click a card to open that server. The empty **Create a Server** card and the top-bar **Create a Server** button both start the [creation wizard](servers.md).
+
+You can search your servers (by name, type, version, or tag), sort them by status, name, size, last started, or created, and switch between grid and list layouts with the toggle on the right.
+
+## Recent activity
+
+The feed at the bottom shows the most recent entries from the panel's human-readable audit trail: logins, backups, blueprint exports, update checks, chat-command changes, server starts and stops, and more. Every entry is tagged with the server it belongs to (or the panel itself) and how long ago it happened. **View All** opens the full history on the [Activity](activity.md) page.
+
+## Background tasks
+
+Anything slow shows up in the **Background Tasks** menu in the top bar (the checklist icon), from any page: starting, stopping, restarting, and rebuilding servers, backups, restores, world imports and installs, mod and pack installs, blueprint exports and imports, update checks, and scheduled backups and update checks. The icon gets a spinning ring while something is running, with a count. Each row shows the current step and progress, and a toast tells you when a task you were watching finishes or fails. Finished tasks stay in the menu for a few seconds. Quick housekeeping jobs (temporary file cleanup, ban expiry sweeps) are left out so the menu stays quiet.

@@ -1,0 +1,17 @@
+{{!-- Settings section card - block partial so every section shares one header
+    treatment, padding and rhythm:
+
+      {{#> settings/card heading="Panel" desc="Optional one-liner."}}
+        …section body…
+      {{/settings/card}}
+
+    Params: heading, icon (optional icon name shown before it), desc (optional sub-line), wide (span both columns at lg),
+    id (optional element id), guard (optional: what the unsaved-changes
+    warning calls this section, see public/js/lib/dirtyGuard.js). --}}
+<section class="card p-4 sm:p-5{{#if wide}} lg:col-span-2{{/if}}"{{#if id}} id="{{id}}"{{/if}}{{#if guard}} data-dirty-group="{{guard}}"{{/if}}>
+  <div class="mb-4">
+    <h3 class="card-title">{{#if icon}}{{{icon icon 'size-4'}}}{{/if}}{{heading}}</h3>
+    {{#if desc}}<p class="help">{{desc}}</p>{{/if}}
+  </div>
+  {{> @partial-block}}
+</section>

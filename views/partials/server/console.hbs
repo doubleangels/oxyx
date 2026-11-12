@@ -1,0 +1,85 @@
+<div class="card p-4" data-console-server="{{server.id}}">
+  {{! Phone: just the filter box and an Options button; the rest folds away so
+      the log and the pinned command box get the screen. sm+: one toolbar row
+      (the tools wrapper turns into display: contents). }}
+  <div class="mb-3 flex flex-wrap items-center gap-2">
+    <input class="input min-w-0 flex-1 sm:max-w-xs" placeholder="Filter log lines…" id="console-filter" aria-label="Filter log lines" data-tip="Plain text matches anywhere in a line. Wrap it in slashes, like /joined|left/, for a regular expression.">
+    <button type="button" class="btn sm:hidden" data-console-tools-toggle aria-expanded="false" aria-controls="console-tools">{{{icon 'sliders-horizontal' 'size-4'}}} Options</button>
+    <div class="hidden w-full flex-wrap items-center gap-2 sm:contents" id="console-tools" data-console-tools>
+    <label class="chip cursor-pointer gap-1.5"><input type="checkbox" class="msm-check" data-level-filter="INFO" checked> INFO</label>
+    <label class="chip cursor-pointer gap-1.5"><input type="checkbox" class="msm-check" data-level-filter="WARN" checked> WARN</label>
+    <label class="chip cursor-pointer gap-1.5"><input type="checkbox" class="msm-check" data-level-filter="ERROR" checked> ERROR</label>
+    <label class="chip cursor-pointer gap-1.5" data-tip="Hides the repeating connection lines the panel adds every few seconds while it checks on your server over its remote console (RCON): player count, time and world settings. Turn this off to see the raw log exactly as the server writes it."><input type="checkbox" class="msm-check" id="console-hide-rcon" checked> Hide Console Noise</label>
+    <div class="ml-auto flex flex-wrap items-center gap-2">
+      <div class="flex items-center gap-1.5" data-tip="Announce your console commands in the game chat under this name, for example Server Admin. Leave blank to stay silent. This is separate from the game's own [Rcon] line.">
+        {{{icon 'megaphone' 'size-3.5 text-ink-faint'}}}
+        <input class="input w-36" id="console-label" placeholder="Announce as…" aria-label="Announce console commands as" value="{{server.consoleLabel}}" maxlength="48" autocomplete="off" spellcheck="false">
+        <button class="btn btn-sm" id="console-label-save">Save</button>
+      </div>
+      {{! Shown by console.js only where the browser supports the Wake Lock API. }}
+      <button class="btn btn-sm" data-wake-lock aria-pressed="false" hidden data-tip="Stops your phone or laptop from dimming and locking while this console is open.">{{{icon 'sun-medium' 'size-3.5'}}} Keep Screen On</button>
+      <button class="btn btn-sm" data-menu="console-dl-menu">{{{icon 'download' 'size-3.5'}}} Download {{{icon 'chevron-down' 'size-3.5'}}}</button>
+      <template id="console-dl-menu">
+        <a href="/api/servers/{{server.id}}/logs?tail=2000" download="{{server.name}}-recent.log">{{{icon 'scroll-text' 'size-3.5'}}} Recent Output (Last 2000 Lines)</a>
+        <a href="/api/servers/{{server.id}}/logs/game/latest.log" download>{{{icon 'file-text' 'size-3.5'}}} Full latest.log</a>
+        <a href="/api/servers/{{server.id}}/logs/bundle.zip" download>{{{icon 'folder-archive' 'size-3.5'}}} All Log Files (.zip)</a>
+      </template>
+    </div>
+    </div>
+  </div>
+
+  {{! Rotated game logs the server itself keeps next to latest.log. Populated by
+      console.js on load; hidden until there's at least one. }}
+  <details class="mb-3 rounded-md border border-line text-xs" data-console-logfiles hidden>
+    <summary class="cursor-pointer px-3 py-2 font-semibold text-ink-faint marker:content-none">
+      {{{icon 'archive' 'size-3.5'}}} Older log files <span data-console-logfiles-count></span>
+    </summary>
+    <div class="divide-y divide-line border-t border-line" data-console-logfiles-list></div>
+  </details>
+
+  {{! Phone: once scrolled to, the log fills the screen between the top bar and
+      the pinned command box + tab bar (100dvh minus about 15rem of those).
+      A fixed 24rem from sm up. }}
+  <div class="relative">
+  <div class="console h-[calc(100dvh-15rem)] min-h-60 overflow-y-auto overflow-x-auto break-words sm:h-96" id="console-log">
+    {{#if consoleLines}}
+      {{#each consoleLines}}
+        <div data-level="{{level}}"{{#if (eq level 'WARN')}} class="text-gold-300"{{/if}}{{#if (eq level 'ERROR')}} class="text-redstone-400"{{/if}}>{{text}}</div>
+      {{/each}}
+    {{else}}
+      {{! stone literal, not ink token - the console stays dark in both themes. }}
+      <div class="grid h-full place-items-center px-4 text-center text-sm text-stone-400" data-console-empty>
+        <div>
+          {{{icon 'terminal' 'mx-auto size-6 text-stone-500'}}}
+          <p class="mt-2">No console output yet. Start the server to see live logs.</p>
+        </div>
+      </div>
+    {{/if}}
+  </div>
+  <button type="button" class="btn btn-sm btn-primary absolute bottom-3 left-1/2 -translate-x-1/2 shadow-modal" data-console-latest hidden>{{{icon 'arrow-down' 'size-3.5'}}} <span data-console-latest-label>Jump to Latest</span></button>
+  </div>
+
+  {{#unless perms.console}}
+    <p class="notice notice-info mt-3">You can watch this console, but running commands needs the console permission on this server.</p>
+  {{/unless}}
+  {{! Phone: pinned to the bottom of the screen above the tab bar, like a chat
+      app's message box. sm+: an ordinary row under the log. }}
+  <div class="action-bar -mx-4 mt-3 flex gap-2 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none{{#unless perms.console}} hidden{{/unless}}">
+    <span class="grid place-items-center rounded-sm border border-line-strong bg-inset px-3 font-mono text-sm text-ok">/</span>
+    {{! min-w-0: see settings.hbs - without it this input won't shrink below its
+        placeholder's intrinsic width and pushes the page wider on narrow screens. }}
+    <input class="input min-w-0 flex-1 font-mono" placeholder="Type a command (Enter to send, ↑ for history)" id="console-input" aria-label="Server command" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+    <button class="btn btn-primary" id="console-send">{{{icon 'terminal' 'size-4'}}} Send</button>
+  </div>
+  <div class="mt-2 flex flex-wrap gap-1.5{{#unless perms.console}} hidden{{/unless}}">
+    <button class="chip" data-quick-cmd="time set day">{{{icon 'sun' 'size-3.5'}}} time set day</button>
+    <button class="chip" data-quick-cmd="weather clear">{{{icon 'cloud-sun' 'size-3.5'}}} weather clear</button>
+    <button class="chip" data-quick-cmd="save-all">{{{icon 'save' 'size-3.5'}}} save-all</button>
+    <button class="chip" data-quick-cmd="whitelist list">{{{icon 'clipboard-copy' 'size-3.5'}}} whitelist list</button>
+    <button class="chip" data-quick-cmd="list">{{{icon 'users' 'size-3.5'}}} list</button>
+    {{! This server's own buttons, rendered by console.js (shared by every admin). }}
+    <span class="contents" data-quick-custom data-quick="{{jsonAttr quickCommands}}" data-server-id="{{server.id}}"></span>
+    <button class="chip border-dashed" data-quick-add data-tip="Add a button for a command you run often on this server.">{{{icon 'plus' 'size-3.5'}}} Add Button</button>
+  </div>
+</div>
+<script type="module" src="/js/pages/console.js"></script>

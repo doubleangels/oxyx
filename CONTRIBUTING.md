@@ -1,0 +1,262 @@
+# Contributing
+
+Thanks for your interest in improving Minecraft Server Manager. This project is a server-rendered
+Node.js app with a minimal build step (Tailwind CSS plus an esbuild client-JS bundle), so the
+barrier to hacking on it is low.
+
+## Getting set up
+
+```bash
+pnpm install
+pnpm run dev        # starts the app with auto-restart + Tailwind CSS watch
+```
+
+`pnpm run dev` serves the browser JS straight from `public/js/`. `pnpm run build:js` produces the
+minified esbuild bundle in `public/dist/` (a gitignored artifact); the app serves it when present
+and falls back to raw source otherwise, so you only need it to test the production bundle.
+
+Open http://localhost:25564. You need **Node.js 24+** (for the flagless built-in `node:sqlite`) and
+Docker running to exercise anything that touches containers. First run creates the admin account.
+
+All state lives under `./data` (or `$DATA_DIR`). To start from a clean slate, stop the app and delete
+that directory; it's rebuilt on boot.
+
+## Optional: CodeGraph indexing
+
+This repo works well with CodeGraph, which builds a local symbol/call-graph index for faster code
+navigation and better AI-assisted edits. It's entirely optional and per-developer: install the
+CodeGraph CLI, run its daemon at the repo root, and it maintains a `.codegraph/` directory. That
+directory is gitignored (a large, machine-local SQLite index plus a daemon socket and PID file) and
+each developer's daemon rebuilds it, so there's nothing to commit or share.
+
+## Before you open a PR
+
+These are the exact gates CI runs. Each works on a clean clone with no Docker or running app:
+
+```bash
+pnpm run lint          # ESLint (errors, no warnings)
+pnpm run format:check  # Prettier
+pnpm run typecheck     # tsc --checkJs over the type-clean core
+pnpm test              # unit tests (node:test)
+pnpm run build         # Tailwind CSS + esbuild client-JS bundle
+```
+
+`pnpm run format` fixes formatting. `pnpm test` is a real, fast unit suite (no Docker); `pnpm run
+test:smoke` is the separate live sweep against a running panel. While iterating on a change, `pnpm run
+test:watch` re-runs the suite on every save.
+
+`main` is protected: the CI status check `quality` is required. It is an aggregate job that is green
+only when the `checks` job (lint, format, typecheck, build), the `tests` job, and the PR-only
+`docker-build` job all pass. The PR branch must be up to date with `main`, and direct pushes, force
+pushes and deletion are blocked for everyone including admins. Every change (releases too) lands
+through a PR. The same workflow publishes the `:latest` image and the GitHub Release on a push to
+`main`, and those jobs only run after the gates pass, so an untested commit can never ship.
+
+Keep changes focused and match the surrounding style (Prettier enforces it). Server code is **plain
+CommonJS JS, with no TypeScript compile step**. The browser code in `public/js/` is ESM, bundled and
+minified by **esbuild** into `public/dist/js/` for production; it is not a framework and not a build
+prerequisite for development, so keep it hand-written progressive enhancement. Type safety comes
+from JSDoc + a `tsc --checkJs` gate: `types/globals.d.ts` holds ambient augmentations, and dynamic
+interop files (Docker/NBT/HTTP-JSON) carry a `// @ts-nocheck` header while type coverage is grown
+incrementally; new modules are checked by default, so keep them clean.
+
+`public/vendor/chart.umd.js` is a **vendored** copy of Chart.js (not a package dependency); update it by
+hand and note the version in the PR.
+
+## How the code is organized
+
+The full picture is in [`docs/architecture.md`](docs/architecture.md). The short version:
+
+**Layering, one direction only:**
+
+```
+web/routes (HTTP)  →  services (domain logic)  →  docker / db / storage (infrastructure)
+```
+
+- **`web/routes/`**: Express routers. Parse/validate input (zod), call a service, shape the
+  response. No business logic here.
+- **`services/`**: the domain logic. This is where features live. Services may call `docker/`,
+  `db/`, `storage/`, and each other.
+- **`docker/`, `db/`, `storage/`**: infrastructure. `docker/` wraps dockerode; `db/` wraps
+  `node:sqlite` + migrations; `storage/` owns the `./data` layout, the path guard, and disk quotas.
+- **`config/field-catalog/`** is the **single source of truth** for server settings: every itzg
+  environment variable, its friendly label, help text, type, default, and validation. Add a server
+  setting here and the wizard/forms/validation pick it up automatically.
+- **`events/`** and **`ws/`** are cross-cutting: `recordEvent()` is the one entry point for history,
+  and `ws/` carries the live console + stats sockets.
+
+## Three conventions that will surprise you
+
+1. **Never touch the filesystem under `./data` directly.** Always resolve paths through the path
+   guard in `src/storage/` (`safeJoin`). It rejects any path that escapes the data root, which is the
+   backbone of the app's file-safety story. Uploads and archive extraction are additionally
+   size-capped.
+2. **Lazy `require()` calls are intentional cycle-breakers.** Some modules `require()` a sibling
+   _inside a function_ rather than at the top of the file to avoid a circular dependency at load
+   time. If you see `const x = require('...')` mid-function, that's why; don't "clean it up" by
+   hoisting it without checking for the cycle.
+3. **`server.properties` is a single-writer file.** The itzg image re-asserts environment-backed
+   properties on every start, so any code that changes a property directly must go through
+   `writeServerProperties()` (whole file) or `setServerProperty()` (one key) in
+   `src/services/servers.js`, which atomically rewrite the file and un-set the matching env var.
+   Never a raw `fs.writeFile` plus a separate env edit. World Controls (PvP / difficulty), the
+   whitelist toggle, and the Files editor already use them. Property-backed env fields carry a
+   `prop:` attribute in `src/config/field-catalog/`; the field-catalog tests check every `prop`
+   against a vendored copy of the image's own `property-definitions.json`
+   (`test/fixtures/itzg-property-definitions.json`), so a field the image maps to a property but the
+   catalog does not is a test failure. Refresh the fixture from upstream when adding one.
+
+## Shared helpers
+
+Prefer the shared helpers over re-implementing patterns:
+
+- `src/utils/httpError.js`: `httpError(status, message)` for throwing HTTP errors from services.
+- `src/web/middleware/jsonErrorHandler.js`: the standard JSON error handler (redacts 5xx detail).
+- `src/web/middleware/asyncHandler.js`: wraps async route handlers so rejections reach the error
+  handler. Prefer it over hand-written `try/catch → next(err)`.
+- Embedding JSON for the browser to `JSON.parse`: `{{jsonScript x}}` inside `<script>` text (an
+  `application/json` island or an inline object literal) and `{{jsonAttr x}}` inside a quoted
+  `data-*` attribute. Both return a SafeString, so the brace count does not matter; the helper name
+  carries the context. `test/template-json.test.js` fails a helper used in the wrong place.
+
+## User-facing copy
+
+Anything a person reads in the panel (button labels, headings, help text, empty
+states, toasts, validation and error messages, and the docs) follows one house
+style so the product reads as friendly to both technical and non-technical
+users:
+
+- **Casing:** Title Case for buttons and for short selectable choices (dropdown
+  options, radio and checkbox labels, tabs, overflow-menu items, toggle chips).
+  The `page-header heading=` stays ALL CAPS. `<h2>` / `<h3>` section and card
+  headings, table `<th>`, field captions (the `.label` above an input, a `<dt>`,
+  every field-catalog `label`), and non-progress `openModal` titles are Title
+  Case too. Title Case covers a parenthetical ("Viewer (Read-Only)", "Disk Quota
+  (GB)") and every part of a hyphenated word ("Sign-In", "Pre-Update"; only a
+  middle minor word stays lowercase, as in "Out-of-Memory"). A stored id shown
+  as a label goes through the `titleCase` or `eventType` template helper. Everything else (help, hints, tooltips, placeholders, empty-state bodies,
+  toasts, confirm-dialog bodies and titles, event and history summaries) is a
+  full sentence in sentence case.
+- **Terminal punctuation:** every sentence-shaped string ends in `.`, `!`, or
+  `?`. Bare fragments, single-word labels, and short example placeholders do
+  not.
+- **History summaries:** every `recordEvent({ summary })` string ends in a
+  period, including the terse `Label: detail` lines ("Folder created:
+  plugins/x.jar.", "Server restarted.").
+- **In-progress status lines end in `…`, never a period:** `runTask` /
+  progress modal titles and every `task.step(...)` / `onProgress(...)` /
+  `onStep(...)` label, as sentence-case gerunds ("Creating backup…",
+  "Querying Modrinth, CurseForge, …"). A step that reports an outcome rather
+  than an ongoing action is a sentence and takes a period ("Shrink skipped
+  because the server was running.").
+- **No `" - "` as a sentence dash, and no `–` or `—`.** Split into two
+  sentences, use a colon, or a parenthetical. Hyphenated compounds are fine.
+- **Proper nouns stay capitalised:** Minecraft, Mojang, Docker, Java, RCON,
+  Modrinth, CurseForge, BlueMap, Discord, Fabric/Forge/NeoForge/Quilt/Paper/
+  Purpur, Bedrock, Geyser, Node.js, pnpm. Capitalise an interpolated
+  `${loader}` through the `capitalize()` helper.
+- **No infrastructure jargon in user text:** "rebuild the server" not
+  "recreate", "the data folder" not `./data`, "stopped for running out of
+  memory" not "OOM-killed".
+- **Errors** are friendly and actionable, never a bare status code, a raw
+  `err.message`, raw Zod text, or an internal id. Client code has
+  `friendlyError(res | err, { action })` in
+  [`public/js/lib/errors.js`](public/js/lib/errors.js) for API-call fallbacks.
+- The field catalog (`src/config/field-catalog/`) uses curly `’` apostrophes
+  internally and consistently; leave those as-is. Straight quotes everywhere
+  else.
+
+### What the copy check covers
+
+`pnpm run test:prose` enforces all of the above mechanically, and it reads every place text
+reaches a person:
+
+- **Views:** headings, table headers, buttons, options, tabs, legends, captions, chips, checkbox
+  and radio labels, list items, paragraphs, help text, every partial parameter in either quote
+  style (`title=`, `sub=`, `message=`, `ctaLabel=`, …), the attributes a person reads or hears
+  (`title`, `data-tip`, `data-th`, `placeholder`, `aria-label`, `alt`, `data-desc`, …), the quoted
+  arguments of `default` and `plural`, and inline `<script>` blocks.
+- **JavaScript** (`src/` and `public/js/`): toasts, errors, validation messages, progress and
+  history strings, log lines, and the string properties and arrays that carry copy. HTML built in a
+  string or template (`innerHTML`, `insertAdjacentHTML`) is read with the same rules as a view.
+- **Everything else prose-shaped:** a string of four or more words that no context above claims
+  still gets the dash, quote, jargon, and proper-noun rules, and must end in a period if it holds a
+  full stop mid-string. A new property or helper name cannot hide copy from the check.
+- **Docs and other text:** every Markdown file (the newest `CHANGELOG.md` section only, since old
+  release notes are a record of what shipped), `public/manifest.json`, the `package.json`
+  description, and the GitHub issue forms.
+
+A few things are deliberately judged more loosely. Placeholders and screen-reader labels
+(`aria-label`, `alt`) are fragments, so they need a capital letter but no period, and a placeholder
+that is an example (a host name, a URL, anything in a monospace field) is not checked at all. A
+checkbox label longer than six words is a sentence, so it is not forced into Title Case. A disabled
+option or an option that reads as a status line ("Loading biomes…") is a message, not a choice.
+Every field-catalog `label` is Title Case: a switch (a `boolean` field) is a choice, and every other
+label is a field caption. The catalog's help and descriptions stay sentence case. Prompts sent to a language model
+(`src/services/wizard*.js`) are not user copy.
+
+## Logging
+
+Server code logs through `src/logger.js`, never `console.*` (ESLint enforces this under `src/`; only
+`preflight.js`, `instrument.js`, and `config/index.js` run before the logger exists and are exempt).
+At the top of a module:
+
+```js
+const logger = require('../logger')(require('node:path').basename(__filename));
+```
+
+- **Message string:** one plain sentence, sentence case, ending in `.`, `!`, or `?`, with **no
+  colon**. Every variable goes in the structured second argument, not interpolated into the text;
+  `logger.info('Started a server.', { serverId, actor })`, not ``logger.info(`Started server ${id}`)``.
+- **Levels:** `info` = start/finish of a state-changing operation; `debug` = rejected input, early
+  returns, intermediate steps, high-frequency read paths; `warn` = recoverable failure; `error` =
+  a failure carrying a stack (pair it with `captureError(err, …)` from `src/instrument.js`); `fatal`
+  = the process is going down.
+- **One owner per error.** A `catch` that rethrows or calls `next(err)` does not log; the error
+  handler owns it. A `catch` that swallows and handles locally logs exactly once.
+- **Secrets:** `src/utils/logSanitize.js` redacts secret-shaped keys and strips URL query strings,
+  but don't hand the logger request bodies, passwords, tokens, or full entity lists; pass ids and
+  counts. In hot loop bodies pass primitives only.
+- High-frequency background loops use `makeFailureThrottle()` from `src/logger.js` so a persistent
+  failure logs once, not every tick.
+
+## The installer
+
+`deploy/install.sh` is the one path every host and provider deployment should use, so it has its own
+tests rather than being smoke-tested by hand:
+
+```bash
+node --test test/deploy-install.test.js   # pure helpers, no Docker, runs anywhere
+pnpm run test:deploy                      # install/upgrade/uninstall in a container, docker mocked
+pnpm run test:deploy:real                 # the heavy one: real Docker, real image, real panel
+```
+
+The script keeps its logic in functions and only runs `main` when executed, so the unit test can
+source it and call pieces directly. Anything you add to it wants a scenario in
+`test/deploy/install-scenarios.sh`.
+
+## Reporting bugs / requesting features
+
+Open an issue with clear reproduction steps (and your OS + Docker flavor for anything
+environment-specific); the issue forms ask for the details that save a round trip. Not sure it's a
+bug? [`SUPPORT.md`](SUPPORT.md) covers where to ask.
+
+Security issues go through [private reporting](https://github.com/anefzaoui/minecraft-server-manager/security/advisories/new)
+rather than a public issue. [`SECURITY.md`](SECURITY.md) explains what to include and what happens
+next.
+
+## Getting your face on the README
+
+The avatar strip near the top of the README is `docs/images/contributors.svg`, generated from the
+repository's contributor list by `scripts/contributors-svg.js`. Land one commit and you're in it:
+a workflow regenerates the strip on the first of each month and opens a PR when it changes, and you
+can refresh it yourself any time with `pnpm run contributors`.
+
+The avatars are baked into that one file, so the README never asks a third-party image service for
+anything.
+
+Below it sits a second strip, `docs/images/contributors-reports.svg`, for people whose bug report,
+reproduction, or idea shipped without a commit behind it. GitHub's contributor list only counts
+commits and cannot know that, so those logins live in [`docs/credits.json`](docs/credits.json) and
+the same script draws them. Add a login there and run `pnpm run contributors`. Anyone who later
+lands a commit drops out of that strip automatically and turns up in the main one.

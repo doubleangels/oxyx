@@ -1,0 +1,267 @@
+# Architecture
+
+[← Back to docs index](README.md)
+
+Minecraft Server Manager is a single-process, server-rendered Node.js application. It manages
+Minecraft servers that run as Docker containers using the
+[itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server) image, talking to the
+Docker daemon over its API (never by shelling out to the `docker` CLI).
+
+## Runtime shape
+
+- **Express + Handlebars** render pages server-side. There is no SPA; the browser JS in `public/js/`
+  is hand-written progressive enhancement. An esbuild step (`pnpm run build:js`) bundles and
+  minifies it into `public/dist/js/`; the app serves that bundle when it's present and the raw
+  source otherwise, so a dev run without a build still works.
+- **`node:sqlite`** (built into Node; the panel requires Node ≥ 24) is the database: synchronous,
+  zero native modules, WAL mode. A small versioned-migration runner applies `src/db/migrations/*` on
+  boot. Prepared statements are cached in `src/db/index.js` keyed on the SQL text.
+- **`ws`** carries the live console and stats streams. Both are **brokered**: one upstream
+  `docker logs --follow` (or `docker stats`) per server, demuxed once and fanned out to every
+  connected tab, rather than one upstream per viewer. The console broker coalesces upstream chunks
+  for a few milliseconds so a boot burst reaches each tab as one frame, keeps a small replay buffer
+  that a late-joining tab receives as a single message, and drops a subscriber whose socket falls
+  too far behind rather than stalling the shared stream. The browser appends each message as one
+  batch, so a thousand-line backlog costs one layout, not a thousand.
+- **`compression`** gzips text responses (HTML, JS, CSS, JSON) ahead of the static handlers. Images
+  and archives are skipped by its type filter, and the `/map/` proxy is excluded because it streams
+  BlueMap's own responses through unchanged.
+- **dockerode** is the only way the app talks to Docker. The endpoint is auto-detected per platform
+  (Windows named pipe vs. unix socket).
+- **All persistent state lives under one directory** (`$DATA_DIR`, default `./data`). Copying that
+  directory migrates the entire panel.
+
+## Layering
+
+Dependencies flow in one direction:
+
+```
+                 ┌─────────────────────────────┐
+   HTTP  ───────▶│  web/routes/*  (+ middleware)│   parse & validate input, shape responses
+                 └──────────────┬──────────────┘
+                                │
+                 ┌──────────────▼──────────────┐
+                 │         services/*          │   domain logic (the actual features)
+                 └───┬─────────┬─────────┬─────┘
+                     │         │         │
+        ┌────────────▼──┐ ┌────▼────┐ ┌──▼──────────┐
+        │   docker/*    │ │  db/*   │ │  storage/*  │   infrastructure
+        └───────────────┘ └─────────┘ └─────────────┘
+```
+
+- **`web/routes/`**: one router per domain (`players`, `worlds`, `crashes`, `blueprints`, `files`, …).
+  `web/app.js` mounts the top-level ones (`api.js`, the session JSON API that also holds the core
+  server routes and mounts the per-server domain routers; `index.js`, the pages; `auth`, `account`,
+  `tasks`, …). Routers validate with zod, call a service, and return JSON
+  or render a view. Business logic does not belong here. Two routers are mounted in the **public
+  zone**, before `requireAuth`: `routes/status.js` (opt-in per-server HTML status pages) and
+  `routes/apiV1.js` (`/api/v1`, a read-only JSON API authenticated by an admin-minted Bearer token
+  from `services/apiTokens.js`, off unless enabled in Settings; see `docs/public-api.md`). It
+  serves server status, per-server players and backup history, and a Prometheus `/metrics` scrape
+  target, all from the in-memory live cache and the database (never a Docker call per request).
+  Successful responses are cacheable for five seconds (`Cache-Control: private, max-age=5`).
+- **`services/`**: the heart of the app. Each service owns one domain and may depend on
+  infrastructure and on other services.
+- **`docker/`**: dockerode wrappers: `connect` (endpoint detection + daemon health), `containers`
+  (create/start/stop/rebuild with bind mounts, memory/CPU limits, and labels), `logs`, `stats`,
+  `images`, `networks` (host network discovery), `hostPath` (re-roots bind paths under
+  `DATA_DIR_HOST`), and a `watcher` that turns Docker events into history + crash detection.
+- **`db/`**: the SQLite wrapper and migration runner.
+- **`storage/`**: the `./data` bootstrap, the **path guard** (`safeJoin`, the file-safety
+  backbone), and the background size-indexer + quota enforcement.
+
+Cross-cutting:
+
+- **`config/`**: environment config plus the **field catalog**: the single source of truth for
+  server settings. Every itzg environment variable is catalogued (label, help, type, unit, default,
+  validation, section, danger flags). The wizard, settings forms, and zod validation are all derived
+  from it, so exposing a new setting is a data change, not new UI plumbing.
+- **`events/`**: `recordEvent()` is the one entry point for the history log; lifecycle events also
+  capture container-log excerpts to `data/logs/<id>/events/`.
+- **`ws/`**: authenticated console + stats WebSockets (session cookie verified on upgrade, `Origin`
+  checked to block cross-site hijacking), brokered per server (see "Runtime shape").
+- **`logger.js` + `instrument.js`**: `require('./logger')(label)` returns a per-module
+  [Pino](https://getpino.io) logger; level from `LOG_LEVEL`, `makeFailureThrottle()` keeps a
+  persistently-failing background loop to one log line plus a "recovered" line.
+  `src/utils/logSanitize.js` redacts credential-shaped keys and webhook tokens from the structured
+  metadata; `src/config/logLevel.js` is the shared level allowlist (kept separate to avoid a
+  require cycle with `config`). `src/instrument.js` is a dormant Sentry seam, loaded first in
+  `src/server.js`. `src/web/middleware/requestLog.js` writes one access-log line per request
+  (skipping `/healthz` and static assets).
+- **What lands in the container log** (all secret-free, through `logSanitize.js`):
+  - every history event (`recordEvent()` logs type, server, actor, summary and full details at `info`);
+  - every request: who (username, role, API token or session), what (method, path, query), a
+    sanitized body summary for writes, upload names and sizes, status, duration and response size.
+    Sign-in, setup, 2FA, password, API-key and token routes never log a body. Polled reads (the
+    task tray, live status) log at `debug`;
+  - every Docker action: container create (full spec, env redacted by name), start, stop, kill,
+    remove, image pulls, cleanup containers;
+  - every command run in a server container, RCON included, with duration, exit code and the start
+    of its output. Commands are passed through `redactCommand()` (AuthMe-style `login`/`register`
+    arguments and any `password`/`token`/`key` value are masked). Read-only polls (`list`, `tps`,
+    `data get`…) log at `debug`, game-changing commands at `info`;
+  - every background task's start, steps, finish or failure with timings (`services/tasks.js`);
+  - every outbound HTTP call (method, host, path, status, duration; no query, headers or bodies;
+    webhook paths masked) via `utils/outboundLog.js`, `debug` for GETs and `info` for writes;
+  - live console/stats WebSocket opens and closes, panel setting changes (old and new value), and
+    the effective configuration at boot.
+
+  Values are redacted by key name (`password`, `token`, `secret`, `apiKey`, `pin`, `backupCodes`,
+  `RCON_PASSWORD`…), file contents are logged as a size only, and booleans are never redacted. ESLint enforces `no-console` under `src/**`, with
+  `preflight.js`, `instrument.js`, and `config/index.js` exempt (they run before the logger exists).
+
+- **Rate limiting**: `src/web/middleware/rateLimit.js` puts `express-rate-limit` in front of `/api`
+  (`RATE_LIMIT_API_PER_MIN`, default 1200) and the login / 2FA / setup POSTs
+  (`RATE_LIMIT_AUTH_PER_15MIN`, default 100); `0` disables a limiter. It keys on `req.ip`, so
+  `TRUST_PROXY` matters behind a proxy. `/api/v1` has its own limiters: a per-client-IP cap
+  (five times the per-token budget) that runs before the token is verified, then a per-token
+  budget (`RATE_LIMIT_PUBLIC_API_PER_MIN`, default 120) keyed on the verified token's id. A
+  separate per-account soft counter in
+  `src/web/middleware/auth.js` handles the login lockout (per-IP and account-global, decaying).
+- **Authorization**: two layers. The global role (`requireAuth` → `requireRole` / `requireWrite` in
+  `src/web/middleware/auth.js`) gates panel-wide actions and is the default on every server. Per-server
+  permissions (`src/services/permissions.js`, nine capabilities stored as a JSON list per
+  `(user, server)` in `user_server_permissions`) refine that default for one server; every
+  `/api/servers/:id` route, sub-router mount, page, WebSocket, and fleet-wide listing goes through
+  `src/web/middleware/serverAccess.js` (`serverScope`, mounted on the `/servers/:id` prefix of both
+  the API and the page router, hides a server without `view` as a 404; `requireCap(cap)` names the
+  capability a route needs). Writes that name their server in the body (schedules, world extract and
+  install, blueprint export) are opened for viewers by `requireWrite` only for that server, and each
+  such route checks the capability itself. `test/permissions-routes.test.js` walks the live router
+  stacks and fails if a server-scoped write route, mount, or page has no gate.
+
+## Key domain behaviors
+
+- **Modpacks are always pinned.** The image auto-upgrades unpinned packs on every restart, so the
+  panel resolves "latest" to a concrete version id at install time and pins it. Upgrades are an
+  explicit orchestrated flow (`updates/`): preview → pre-update backup → graceful stop → re-pin →
+  rebuild → health-monitor → one-click rollback.
+- **The custom-mod overlay** is panel-managed: user-added mods land in the deduplicated library and
+  are hard-linked into the server so they survive pack updates. Disabling is class-aware. Because
+  the library keeps every build it has downloaded, an update records the build it replaced
+  (`server_content.previous_*`) and can be reverted from local files alone.
+- **A Minecraft version upgrade has to be earned.** `services/compat.js` scans a server's mods
+  (resolved from panel-installed rows, then the CurseForge pack manifest, then by content hash
+  against Modrinth/CurseForge) and builds a (loader, Minecraft version) support matrix per project
+  out of CurseForge's `latestFilesIndexes` (200 projects per request) and Modrinth's per-project
+  version list (one request per project, which is what keeps loader and version paired). The update
+  checker offers only the newest version EVERY mod supports, and offers nothing at all when the
+  answer cannot be established: no scan, a scan for a different version or loader, one that never
+  finished, or a jar neither registry recognises. Scans are manual only, and their progress and
+  partial results live in `version_compat` (not in the in-memory `services/tasks.js`), so a refresh
+  or a panel restart resumes instead of hanging on a spinner; `reconcileScans()` marks scans
+  orphaned by a shutdown on the next boot.
+- **Ports** are allocated from a base scheme (game from `PORT_GAME_START` upward, RCON = game +
+  `PORT_RCON_OFFSET`, Bedrock from `PORT_BEDROCK_START`), probed for availability, and reserved in
+  the DB. "Taken" is the union of every server's claims (live ports, plus a pending pair below),
+  every host port any Docker container publishes (`containers.publishedHostPorts`: running
+  containers' live bindings plus each stopped container's configured ones, because an OS bind probe
+  from inside the panel's own container sees only that container's network namespace), and the OS
+  probe. The Docker part is cached for 3 s and bounded: a list that doesn't answer in 2.5 s drops
+  only the Docker part, and a slow inspect costs only that container's ports. Server creates and
+  `servers.changeGamePort` pick ports through one serialization chain that covers only the pick
+  and its claim (the row write for a create, the in-memory reservation for a port change);
+  BlueMap's port picker and the extra-port overrides are not in it and do
+  not consult Docker. A port change on an existing server (`servers.changeGamePort`, under the
+  server's op lock) is applied at once, because Docker fixes port bindings at container creation:
+  the new pair (RCON always game + `PORT_RCON_OFFSET`) is checked and reserved in memory
+  (`ports.reserve`, both the old and the new pair, honored by every other pick) under the port
+  lock. It is refused (409 `PENDING_CHANGES`) while other settings wait for a rebuild, so it only
+  ever rebuilds a container that already ran, on a new port; and a running server is only changed
+  when the request says `restart: true` (otherwise 409 `NEEDS_CONFIRM`). The image is pulled and a
+  custom container name checked before anything is touched. A running server is stopped; then the
+  new pair is written with `pending_recreate = 1` (so a panel crash from there leaves an honest
+  "rebuild pending"), the container removed, rebuilt on the new pair and started. If any step
+  after the stop fails, `putBackOnOldPort` writes the old pair back, rebuilds (and restarts, if it
+  was running) on it and records which step failed; history and alerts say if even that failed,
+  which leaves the server stopped until someone starts it. The `settings` capability is enough,
+  running server included. Non-admins may only pick from `PORT_GAME_START` up.
+  (The `port_*_pending` columns from migration 029 belong to an earlier, unreleased design and are
+  unused; 031 clears them.) A lock collision answers 409 with `code: 'BUSY'`, which the retrying
+  callers below check rather than the wording. A crash auto-restart
+  (`watcher.restartAfterCrash`) and a scheduled backup or start (`scheduler.runTaskWithRetry`)
+  that find the server busy with another action try again every 20 s / 60 s for up to 30 minutes,
+  and a pack update or rollback retries its locked steps the same way (`opLock.retryWhileBusy`);
+  a crash restart or a waiting scheduled start gives up once someone has stopped, killed or
+  started the server since (`events.lifecycleActionSince`), and the crash restart also when
+  auto-restart is off or the server is gone. Scheduled restarts, stops, and commands are not
+  retried, and a schedule whose last run is still waiting skips its next firing.
+- **Disk quotas** are enforced by the panel because Docker can't cap bind-mount usage: the indexer
+  caches per-directory sizes and disk-growing operations are gated on them.
+- **Secrets** (RCON passwords, API keys, TOTP secrets, the Discord webhook URL) are encrypted at
+  rest with AES-256-GCM using a dedicated random key at `$DATA_DIR/.secret-key` (mode `0600`,
+  auto-generated). It's independent of `SESSION_SECRET`; a `SESSION_SECRET`-derived key is kept as a
+  decrypt-only fallback for values written before the dedicated key existed, and
+  `src/services/secretsMigration.js` re-encrypts those under the dedicated key once on boot.
+  A `.secret-key` that exists but doesn't parse is a hard boot error (it is never silently
+  regenerated over the top). Blueprints strip all secrets on export.
+- **`server.properties` is panel-owned but env-shadowed.** The itzg image re-asserts every
+  env-backed property on each start (`OVERRIDE_SERVER_PROPERTIES` defaults true), so a value the
+  panel edits directly (World Controls PvP/difficulty, the whitelist toggle, the Files editor)
+  would be silently reverted on the next start unless the matching env var is removed and the
+  container rebuilt. Every direct property write goes through `writeServerProperties()` (whole
+  file) or `setServerProperty()` (one key) in `src/services/servers.js`, which atomically rewrite
+  the file, un-set the env var behind each changed key (via the `prop:` attribute on catalog
+  fields, checked in tests against the image's own property definitions), and flag
+  `pending_recreate`. Difficulty is written to the file as well as sent over RCON, because a
+  dedicated server re-applies the `difficulty` property on every boot. Minecraft itself re-saves
+  server.properties from its boot-time values on `whitelist on/off`, which would undo edits made
+  while the server runs, so the running whitelist toggle snapshots the file first and writes it back
+  with only `white-list` changed. The env
+  vars stay fully configurable at creation (the wizard renders them and they apply once); they only
+  un-pin the first time the panel edits the underlying property. MOTD is the same contract: a direct
+  `motd` file edit un-sets it, so the last write wins.
+
+## Data & wire formats
+
+- **`data/panel.db`**: the SQLite database. Snapshotted daily via `VACUUM INTO` to
+  `data/backups/_panel/` (newest 14 kept); `PRAGMA integrity_check` runs on boot.
+- **`data/.session-secret`**: the auto-generated cookie-signing secret, created on first run if
+  `SESSION_SECRET` is unset. Deleting it rotates the secret (which invalidates sessions).
+- **`data/.secret-key`**: the dedicated 32-byte at-rest encryption key (mode `0600`), auto-created
+  on first run. Independent of `SESSION_SECRET`; deleting it makes every stored credential
+  undecryptable, so it belongs with your backups.
+- **Blueprints (`.mcserver.zip`)**: a zip with a `manifest.json` describing config, resources, the
+  pinned pack reference, the overlay manifest (source URLs + sha256), chosen config files, and
+  optionally a world. Import re-downloads and hash-verifies each mod and assigns fresh ports.
+- **Docker containers** created by the panel are named and labelled so the watcher can find them;
+  the panel owns their full lifecycle.
+
+## Boot sequence
+
+1. `require('./instrument')` (the Sentry seam) before anything else, then `require('./preflight')`
+   to fail clearly on an unsupported Node version.
+2. Load config; ensure/generate `.session-secret` **and** `.secret-key`.
+3. `ensureDataRoot()`: create the `./data` layout, wipe `tmp/`.
+4. Run DB migrations, then `PRAGMA integrity_check` (logs loudly, points at `data/backups/_panel`
+   on failure).
+5. Re-encrypt any legacy `SESSION_SECRET`-keyed secrets under `.secret-key` (`secretsMigration`).
+6. Import API keys from the environment once (`apiKeys.importFromEnvOnce()`), pin any server still
+   carrying an unpinned modpack selector (`packPins.pinUnpinnedServers()`), mark version
+   compatibility scans left running by a previous process as interrupted
+   (`compat.reconcileScans()`), then seed starter blueprints (guarded).
+7. Start the HTTP + WS server. On an exposed bind, print the first-run `/setup` PIN.
+8. Install the post-boot runtime guard (catches uncaught faults; `MSM_EXIT_ON_FATAL=1` makes it
+   hard-exit for supervised deployments).
+9. Start background services: WS broker, storage indexer, crash + inventory watchers, scheduler,
+   Discord event bridge, chatbot outreach watcher, and the **daily maintenance timer** (prune old
+   analytics rows, chatbot transcripts, event history (365 days) and API cache rows, then snapshot
+   `panel.db`).
+10. Initialize Docker **in the background**. The UI is fully usable while the daemon is down;
+    Docker features light up when it becomes reachable. Once connected, `refreshStatuses({ boot })`
+    reconciles cached statuses, emits a one-time `offline-after-restart` event for a server that was
+    up before the panel restarted and won't be brought back, and the boot loop starts
+    `auto_start` servers plus recovers `auto_restart` servers found crashed during the outage
+    (respecting crash-loop backoff).
+
+> The instrument-before-preflight order is a deliberate trade-off: it lets a future Sentry wiring
+> patch the runtime first, at the cost of a slightly less friendly message on a truly ancient Node.
+
+## Build pipeline
+
+`pnpm run build` = `build:css` (Tailwind → `public/css/app.css`) + `build:js` (esbuild →
+`public/dist/js/`, ESM with code-splitting). `postinstall` runs **CSS only**. `public/css/app.css`
+and `public/dist/` are gitignored build artifacts; the Dockerfile build stage runs the full
+`pnpm run build` and copies `public/` into the runtime image. Static assets are served
+`immutable`/long-cache for fingerprinted files, short-cache for CSS/JS, and `no-cache` for HTML and
+`/api`.

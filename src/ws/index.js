@@ -1,0 +1,495 @@
+'use strict';
+
+// WebSocket endpoints:
+//   /ws/console/<serverId>  - live log stream down, RCON commands up
+//   /ws/stats/<serverId>    - normalized stats samples every 2s
+// Messages are JSON: {kind: 'log'|'stats'|'cmd'|'cmd-result'|'error'|'log-end', ...}
+// 'log-end' marks the end of one console log stream (server stopped/restarted);
+// the client closes the socket on it so its reconnect/backoff resumes a fresh one.
+
+const { StringDecoder } = require('node:string_decoder');
+const { WebSocketServer } = require('ws');
+const signature = require('cookie-signature');
+const config = require('../config');
+const db = require('../db');
+const { followLogs } = require('../docker/logs');
+const { statsStream } = require('../docker/stats');
+const { execCapture, inspectStatus } = require('../docker/containers');
+const { getServer } = require('../services/servers');
+const permissions = require('../services/permissions');
+const { recordEvent } = require('../events');
+const logger = require('../logger')('ws');
+const { serializeError } = require('../utils/logSanitize');
+
+function attachWebSockets(httpServer) {
+  // maxPayload caps inbound frame size so a client can't buffer huge frames in
+  // memory before our handlers run (commands are trimmed to 500 chars anyway).
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+  wss.on('error', (err) => logger.warn('The WebSocket server hit an error.', { err: serializeError(err) }));
+
+  httpServer.on('upgrade', (req, socket, head) => {
+    const match = /^\/ws\/(console|stats)\/([a-zA-Z0-9_-]+)$/.exec(req.url.split('?')[0]);
+    if (!match) {
+      socket.destroy();
+      return;
+    }
+    // Cross-site WebSocket hijacking guard (the HTTP side has originGuard; the
+    // upgrade path bypasses all Express middleware). A browser always sends
+    // Origin on a WS handshake, so a mismatch is a cross-site attempt - reject
+    // it. A missing Origin is a non-browser client (scripts, tests), which the
+    // signed session cookie still gates below.
+    if (!originAllowed(req)) {
+      logger.warn('Rejected a cross-origin WebSocket upgrade.', { path: req.url.split('?')[0] });
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    const auth = sessionAuth(req);
+    const user = auth && auth.user;
+    if (!user) {
+      logger.warn('Rejected a WebSocket upgrade with no valid session.', { path: req.url.split('?')[0] });
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      const [, kind, serverId] = match;
+      // A server the user may not view closes exactly like a missing one.
+      if (!getServer(serverId) || !permissions.can(user, serverId, 'view')) {
+        ws.close(4404, 'unknown server');
+        return;
+      }
+      // One line when a live view opens and one when it closes, with who
+      // watched what and for how long.
+      const openedAt = Date.now();
+      const who = { serverId, kind, userId: user.id, username: user.username, ip: req.socket.remoteAddress };
+      logger.info('Opened a live WebSocket view.', who);
+      ws.on('close', (code) =>
+        logger.info('Closed a live WebSocket view.', { ...who, code, durationMs: Date.now() - openedAt })
+      );
+      if (kind === 'console') handleConsole(ws, serverId, user, auth.sid);
+      else handleStats(ws, serverId);
+    });
+  });
+
+  logger.info('Attached the WebSocket server.');
+  return wss;
+}
+
+async function handleConsole(ws, serverId, user, sid) {
+  const send = (obj) => {
+    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
+  };
+  let unsubscribe = null;
+  let closed = false;
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    if (unsubscribe) unsubscribe();
+  };
+  // Attach lifecycle listeners SYNCHRONOUSLY, before the await below. This does two
+  // critical things: (1) an 'error' listener means a socket protocol error can never
+  // become an unhandled 'error' event that crashes the whole process; (2) a client
+  // that disconnects during the subscribe still triggers cleanup once it exists.
+  ws.on('error', (err) => {
+    logger.debug('A console WebSocket errored.', { err: serializeError(err, { includeStack: false }) });
+    cleanup();
+  });
+  ws.on('close', cleanup);
+
+  ws.on('message', async (raw) => {
+    let msg;
+    try {
+      msg = JSON.parse(raw.toString('utf8'));
+    } catch {
+      return; // intentional: ignore a malformed inbound frame
+    }
+    if (msg.kind !== 'cmd' || typeof msg.command !== 'string') return;
+    // The socket outlives the handshake, so re-read the account on every
+    // command: a user deleted, demoted, or stripped of `console` after this tab
+    // connected must not keep running RCON on the role it had at connect time.
+    const current = sessionStillValid(sid) ? require('../services/auth').getUser(user.id) : null;
+    if (!current) {
+      ws.close(4401, 'signed out');
+      return;
+    }
+    user = current;
+    // Watching logs needs `view`; running commands needs `console` on this server.
+    if (!permissions.can(user, serverId, 'console')) {
+      send({
+        kind: 'cmd-result',
+        command: msg.command,
+        output: '',
+        error: "You don't have the console permission on this server.",
+      });
+      return;
+    }
+    const command = msg.command.trim().replace(/^\//, '').slice(0, 500);
+    if (!command) return;
+    try {
+      const info = await inspectStatus(serverId);
+      if (!info.exists || !['running', 'starting', 'unhealthy'].includes(info.status)) {
+        send({ kind: 'cmd-result', command, output: '', error: 'Server is not running.' });
+        return;
+      }
+      const words = command.split(/\s+/);
+      // A console `stop` (or Paper's `restart`) is a stop the operator asked for.
+      // Record it as such BEFORE the command runs so the Docker die event that
+      // follows lands inside the stop window and is not recorded as a crash or
+      // auto-restarted (the watcher only knows about panel-requested stops).
+      if (words[0].toLowerCase() === 'stop' || words[0].toLowerCase() === 'restart') {
+        recordEvent({
+          serverId,
+          actor: user.username,
+          type: 'stop-requested',
+          summary: `Stop requested from the console (${words[0].toLowerCase()}).`,
+        });
+      }
+      const raw = await execCapture(serverId, ['rcon-cli', '--', ...words]);
+      const output = require('../utils/ansi').stripAnsi(raw);
+      send({ kind: 'cmd-result', command, output: output.trim() });
+      // Optional in-game attribution: the vanilla "Rcon" sender can't be renamed,
+      // so if this server has a console label we announce the action ourselves.
+      announceConsoleAction(serverId, command);
+      recordEvent({
+        serverId,
+        actor: user.username,
+        type: 'rcon',
+        summary: `RCON: ${redact(command)}.`,
+        details: { output: output.trim().slice(0, 2000) },
+      });
+    } catch (err) {
+      logger.debug('An RCON command from the console socket failed.', {
+        serverId,
+        err: serializeError(err, { includeStack: false }),
+      });
+      send({ kind: 'cmd-result', command, output: '', error: err.message });
+    }
+  });
+
+  unsubscribe = subscribeConsole(serverId, {
+    ws,
+    onLog: (text) => send({ kind: 'log', text }),
+    onEnd: () => send({ kind: 'log-end' }),
+    onError: (message) => send({ kind: 'error', message }),
+  });
+  if (closed) unsubscribe(); // client left before subscribe returned
+}
+
+// One upstream `docker logs --follow` + demux pipeline per server, fanned out to
+// every connected /ws/console client (same reasoning as the stats broker below):
+// N admins/tabs on one server's console used to open N independent follow
+// streams. A small rolling buffer replays what's been seen this session to a
+// late-joining tab so it isn't blank.
+const consoleBrokers = new Map(); // serverId -> { subs, follower, buffer, bufferBytes, stopped }
+const CONSOLE_REPLAY_BYTES = 256 * 1024;
+// A subscriber whose socket buffer stays above this for longer than the grace
+// window is dropped. The shared upstream is NEVER paused for one slow client -
+// that would freeze the console for every other admin watching the same server.
+const CONSOLE_SLOW_SOCKET_BYTES = 4 * 1024 * 1024;
+const CONSOLE_SLOW_GRACE_MS = 5_000;
+// How long upstream log chunks are batched before one frame goes to each tab.
+const CONSOLE_FLUSH_MS = 40;
+
+function dropSlowConsoleSubs(broker) {
+  const now = Date.now();
+  for (const s of broker.subs) {
+    const backed = s.ws && s.ws.readyState === s.ws.OPEN && s.ws.bufferedAmount > CONSOLE_SLOW_SOCKET_BYTES;
+    if (!backed) {
+      s.slowSince = 0;
+      continue;
+    }
+    if (!s.slowSince) {
+      s.slowSince = now;
+    } else if (now - s.slowSince > CONSOLE_SLOW_GRACE_MS) {
+      s.dropped = true;
+      broker.subs.delete(s);
+      try {
+        s.onError('The console fell behind and was disconnected. Reload to resume the live log.');
+        s.ws.close(1013, 'console consumer too slow');
+      } catch {
+        /* socket already going away */
+      }
+    }
+  }
+}
+
+/** Tear the broker down when its upstream stream is finished for good. */
+function stopConsoleBroker(serverId, broker) {
+  broker.stopped = true;
+  try {
+    if (broker.follower) broker.follower.stop();
+  } catch {
+    /* already stopped */
+  }
+  if (consoleBrokers.get(serverId) === broker) consoleBrokers.delete(serverId);
+}
+
+function subscribeConsole(serverId, sub) {
+  let broker = consoleBrokers.get(serverId);
+  if (broker && broker.stopped) broker = null; // dead follow - start a fresh one
+  if (!broker) {
+    broker = { subs: new Set(), follower: null, buffer: [], bufferBytes: 0, stopped: false };
+    consoleBrokers.set(serverId, broker);
+    followLogs(serverId, { tail: 300 })
+      .then((follower) => {
+        if (consoleBrokers.get(serverId) !== broker) {
+          follower.stop(); // every subscriber left before the stream connected
+          return;
+        }
+        broker.follower = follower;
+        // Coalesce upstream chunks: a boot burst arrives as hundreds of tiny
+        // chunks, and each used to cost one JSON.stringify + socket frame per
+        // tab. Batch them for a few ms and send one frame instead. The replay
+        // buffer is filled immediately; flush() runs before anything that must
+        // not reorder against pending text (a late joiner, end, error).
+        let pending = '';
+        let flushTimer = null;
+        broker.flush = () => {
+          if (flushTimer) clearTimeout(flushTimer);
+          flushTimer = null;
+          if (!pending) return;
+          const text = pending;
+          pending = '';
+          for (const s of broker.subs) if (!s.dropped) s.onLog(text);
+          dropSlowConsoleSubs(broker);
+        };
+        // A multi-byte UTF-8 character (accented names, CJK chat, box-drawing
+        // in mod banners) can straddle two upstream chunks; decoding each chunk
+        // on its own turns both halves into U+FFFD. The decoder carries the
+        // partial bytes over to the next chunk.
+        const decoder = new StringDecoder('utf8');
+        follower.stream.on('data', (chunk) => {
+          const text = typeof chunk === 'string' ? chunk : decoder.write(chunk);
+          if (!text) return;
+          broker.buffer.push(text);
+          broker.bufferBytes += Buffer.byteLength(text);
+          while (broker.bufferBytes > CONSOLE_REPLAY_BYTES && broker.buffer.length > 1) {
+            broker.bufferBytes -= Buffer.byteLength(broker.buffer.shift());
+          }
+          pending += text;
+          if (!flushTimer) flushTimer = setTimeout(broker.flush, CONSOLE_FLUSH_MS);
+        });
+        follower.stream.on('end', () => {
+          broker.flush();
+          for (const s of broker.subs) s.onEnd();
+          // The follow is over (container stopped / docker restarted it). Drop
+          // the broker so a tab that connects later starts a fresh follow rather
+          // than attaching to this dead one and getting only the stale replay.
+          stopConsoleBroker(serverId, broker);
+        });
+        follower.stream.on('error', (err) => {
+          broker.flush();
+          logger.debug('A console log stream errored.', {
+            serverId,
+            err: serializeError(err, { includeStack: false }),
+          });
+          for (const s of broker.subs) s.onError(`Log stream error: ${err.message}`);
+          stopConsoleBroker(serverId, broker);
+        });
+      })
+      .catch((err) => {
+        broker.stopped = true;
+        if (consoleBrokers.get(serverId) === broker) consoleBrokers.delete(serverId);
+        // A missing container (404) just means the server has never been started -
+        // end quietly; the console already shows a "start the server" placeholder.
+        if (err.statusCode === 404) {
+          for (const s of broker.subs) s.onEnd();
+        } else {
+          logger.debug('A console log stream could not be opened.', {
+            serverId,
+            err: serializeError(err, { includeStack: false }),
+          });
+          for (const s of broker.subs) s.onError(`Log stream unavailable: ${err.message}`);
+        }
+      });
+  }
+
+  // Push out any batched-but-unsent text first, so the replay below (which
+  // already contains it) is not followed by a duplicate live frame.
+  if (broker.flush) broker.flush();
+  broker.subs.add(sub);
+  // One frame for the whole replay, not one per buffered chunk.
+  if (broker.buffer.length) sub.onLog(broker.buffer.join('')); // catch a late tab up
+
+  return () => {
+    broker.subs.delete(sub);
+    if (broker.subs.size === 0 && consoleBrokers.get(serverId) === broker) {
+      consoleBrokers.delete(serverId);
+      broker.stopped = true;
+      if (broker.follower) broker.follower.stop();
+    }
+  };
+}
+
+// One upstream `docker stats --stream` per server, fanned out to every
+// connected /ws/stats client, instead of one per connection: several admins
+// (or one admin with several tabs) watching the same server's dashboard used
+// to each open an independent Docker stats stream and demux pipeline - real,
+// avoidable load on the Docker daemon and the panel process that scales with
+// concurrent VIEWERS rather than with server count.
+const statsBrokers = new Map(); // serverId -> { subscribers, errorSubscribers, endSubscribers, stop }
+
+function subscribeStats(serverId, onSample, onError, onEnd = () => {}) {
+  let broker = statsBrokers.get(serverId);
+  if (!broker) {
+    broker = { subscribers: new Set(), errorSubscribers: new Set(), endSubscribers: new Set(), stop: null };
+    statsBrokers.set(serverId, broker);
+    statsStream(
+      serverId,
+      (sample) => {
+        for (const fn of broker.subscribers) fn(sample);
+      },
+      {
+        // The upstream finished on its own (container stopped or restarted).
+        // Drop the broker so the next tab opens a fresh stream, and tell the
+        // tabs on this one so their sockets close and reconnect, instead of
+        // staying attached to a stream that will never send another sample.
+        onEnd: () => {
+          if (statsBrokers.get(serverId) === broker) statsBrokers.delete(serverId);
+          for (const fn of broker.endSubscribers) fn();
+        },
+      }
+    )
+      .then((stopFn) => {
+        if (statsBrokers.get(serverId) === broker) broker.stop = stopFn;
+        else stopFn(); // every subscriber left before the stream finished connecting
+      })
+      .catch((err) => {
+        if (statsBrokers.get(serverId) === broker) statsBrokers.delete(serverId);
+        for (const fn of broker.errorSubscribers) fn(err);
+      });
+  }
+  broker.subscribers.add(onSample);
+  broker.errorSubscribers.add(onError);
+  broker.endSubscribers.add(onEnd);
+  return () => {
+    broker.subscribers.delete(onSample);
+    broker.errorSubscribers.delete(onError);
+    broker.endSubscribers.delete(onEnd);
+    if (broker.subscribers.size === 0 && statsBrokers.get(serverId) === broker) {
+      statsBrokers.delete(serverId);
+      if (broker.stop) broker.stop(); // else the .then() above stops it once connected
+    }
+  };
+}
+
+async function handleStats(ws, serverId) {
+  let unsubscribe = null;
+  let closed = false;
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    if (unsubscribe) unsubscribe();
+  };
+  // Synchronous 'error'/'close' listeners: no unhandled 'error' crash, and a
+  // disconnect right after subscribing still unsubscribes.
+  ws.on('error', (err) => {
+    logger.debug('A stats WebSocket errored.', { err: serializeError(err, { includeStack: false }) });
+    cleanup();
+  });
+  ws.on('close', cleanup);
+  const liveCache = require('../services/liveCache');
+  unsubscribe = subscribeStats(
+    serverId,
+    (sample) => {
+      if (ws.readyState !== ws.OPEN) return;
+      // Fold in the latest cached tick-performance sample (TPS/MSPT) so the
+      // metrics page can stream it on the same socket as CPU/mem/network.
+      const live = liveCache.get(serverId);
+      ws.send(
+        JSON.stringify({
+          kind: 'stats',
+          ...sample,
+          perf: live.perf || null,
+          perfSupported: live.perfSupported !== false,
+        })
+      );
+    },
+    (err) => {
+      if (ws.readyState !== ws.OPEN) return;
+      ws.send(JSON.stringify({ kind: 'error', message: err.message }));
+      // The broker is gone; a socket left open here would never get a sample.
+      ws.close(1011, 'stats stream unavailable');
+    },
+    () => {
+      // Upstream over: close so the page's reconnect/backoff opens a fresh stream.
+      if (ws.readyState === ws.OPEN) ws.close(1011, 'stats stream ended');
+    }
+  );
+  if (closed) unsubscribe(); // client left synchronously before subscribing even returned
+}
+
+/** Same same-origin rule as web/middleware/auth.js#originGuard: reject only when
+ *  an Origin (or Referer) is present AND its host differs from the Host header. */
+function originAllowed(req) {
+  const raw = req.headers.origin || (req.headers.referer ? req.headers.referer : null);
+  if (!raw) return true;
+  try {
+    return new URL(raw).host === req.headers.host;
+  } catch {
+    return false; // a malformed Origin/Referer on an upgrade is not trustworthy
+  }
+}
+
+/** True while the session row behind a socket exists and has not expired (sign-out and credential changes delete it). */
+function sessionStillValid(sid) {
+  if (!sid) return false;
+  const row = db.get('SELECT expires_at FROM sessions WHERE sid = ?', sid);
+  return Boolean(row) && Date.parse(row.expires_at) >= Date.now();
+}
+
+/** Authenticate a WS upgrade from the express-session cookie → { sid, user: {id, username, role} } | null. */
+function sessionAuth(req) {
+  try {
+    const cookies = Object.fromEntries(
+      (req.headers.cookie || '').split(';').map((c) => {
+        const idx = c.indexOf('=');
+        if (idx === -1) return [c.trim(), ''];
+        return [c.slice(0, idx).trim(), decodeURIComponent(c.slice(idx + 1))];
+      })
+    );
+    const raw = cookies['msm.sid'];
+    if (!raw || !raw.startsWith('s:')) return null;
+    const sid = signature.unsign(raw.slice(2), config.sessionSecret);
+    if (!sid) return null;
+    const row = db.get('SELECT data_json, expires_at FROM sessions WHERE sid = ?', sid);
+    if (!row || Date.parse(row.expires_at) < Date.now()) return null;
+    const data = JSON.parse(row.data_json);
+    if (!data.userId) return null;
+    const user = require('../services/auth').getUser(data.userId);
+    return user ? { sid, user } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Redact sensitive args (op passwords don't exist, but be safe with obvious keys). */
+function redact(command) {
+  return command.replace(/(password|token|key)\s+\S+/gi, '$1 ●●●');
+}
+
+/**
+ * If the server has a console label configured, announce the just-run command in
+ * game chat as "[label] <command>" via tellraw (JSON-escaped, so nothing the admin
+ * types can break out). Fire-and-forget - never blocks the command result.
+ */
+function announceConsoleAction(serverId, command) {
+  const label = (getServer(serverId) || {}).console_label;
+  if (!label) return;
+  const payload = {
+    text: '',
+    extra: [
+      { text: `[${label}] `, color: 'aqua', bold: true },
+      { text: command, color: 'gray' },
+    ],
+  };
+  execCapture(serverId, ['rcon-cli', '--', 'tellraw', '@a', JSON.stringify(payload)]).catch((err) => {
+    logger.debug('Announcing a console action in-game did not send.', {
+      serverId,
+      err: serializeError(err, { includeStack: false }),
+    });
+  });
+}
+
+module.exports = { attachWebSockets, originAllowed };
