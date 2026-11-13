@@ -270,6 +270,13 @@ const config = {
   // True when bound to a non-loopback address - used to warn about the open
   // first-run setup window on an exposed panel.
   isExposedBind: host !== '127.0.0.1' && host !== 'localhost' && host !== '::1',
+  // Host names (lowercase, no port) the panel answers to, from PANEL_ALLOWED_HOSTS
+  // (comma-separated). Loopback names and IP addresses always pass. '*' turns
+  // the check off. See middleware/hostGuard.js for when it is enforced.
+  allowedHosts: (process.env.PANEL_ALLOWED_HOSTS || '')
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean),
   sessionSecret: resolveSessionSecret(),
   cfApiKeySeed: process.env.CF_API_KEY || '',
   trustProxy: resolveTrustProxy(),
@@ -278,6 +285,15 @@ const config = {
   logLevel: resolveLogLevel(),
   sentry: resolveSentry(),
   mapProxyHost: resolveMapProxyHost(),
+  // Host address the RCON and BlueMap ports of server containers are published
+  // on. Blank = auto: 127.0.0.1 when the panel runs on the host, the Docker
+  // host-gateway address (what MAP_PROXY_HOST resolves to) when it runs in a
+  // container. 'all' publishes them on every interface, the old behaviour.
+  internalPortBind: (process.env.INTERNAL_PORT_BIND || '').trim(),
+  // Process/thread ceiling per server container (a fork bomb in a mod cannot
+  // starve the host). Java counts threads here, and big modpacks run several
+  // hundred, so the default is generous. 0 = no limit.
+  containerPidsLimit: numFromEnv('CONTAINER_PIDS_LIMIT', 4096, { min: 0, max: 4194304 }),
 
   // Docker image repository for Minecraft servers. Override for a private mirror
   // or air-gapped registry; the panel is otherwise an itzg/minecraft-server front-end.
@@ -305,6 +321,8 @@ const config = {
     // Per-token ceiling on the public /api/v1 surface (keyed on the token, IP
     // fallback when absent). 0 = off.
     publicApiPerMin: numFromEnv('RATE_LIMIT_PUBLIC_API_PER_MIN', 120, { min: 0, max: 1_000_000 }),
+    // Per-IP ceiling on the anonymous /status/<slug> pages. 0 = off.
+    statusPerMin: numFromEnv('RATE_LIMIT_STATUS_PER_MIN', 120, { min: 0, max: 1_000_000 }),
   },
 };
 

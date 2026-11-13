@@ -1,0 +1,58 @@
+# Variant of ../docker-compose.yml that keeps the raw Docker socket out of the
+# panel container. A socket proxy sidecar holds the socket and passes on only
+# the API sections the panel uses: containers (create, start, stop, inspect,
+# logs, stats), exec (rcon-cli and file helpers), images (pull), networks,
+# events, and the read-only version/info/ping probes. Everything else (volumes,
+# swarm, plugins, secrets, system prune, ...) is refused.
+#
+# This narrows the blast radius of a panel bug, but it is not a sandbox: anyone
+# who can create containers with host binds through the proxy can still reach
+# the host, and the panel's admin can do exactly that by design.
+#
+#   DATA_DIR_HOST=/opt/oxyx/data docker compose -f deploy/docker-compose.socket-proxy.yml up -d
+services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.4.1
+    container_name: oxyx-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      EXEC: 1
+      IMAGES: 1
+      NETWORKS: 1
+      EVENTS: 1
+      INFO: 1
+      VERSION: 1
+      PING: 1
+      # Writes (create/start/stop/exec/pull) are POSTs; the sections above
+      # still limit where they can go.
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+
+  panel:
+    image: ghcr.io/doubleangels/oxyx:${OXYX_TAG:-v0.14.1}
+    container_name: oxyx
+    restart: unless-stopped
+    stop_grace_period: 20s
+    depends_on:
+      - socket-proxy
+    ports:
+      - '25564:25564'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      DATA_DIR_HOST: ${DATA_DIR_HOST:?Set DATA_DIR_HOST to the absolute host path for panel data, e.g. /opt/oxyx/data}
+      DOCKER_HOST: tcp://socket-proxy:2375
+    volumes:
+      - ${DATA_DIR_HOST}:/data
+    networks:
+      - default
+      - docker-api
+
+networks:
+  # Internal: the proxy is reachable from the panel only, never published.
+  docker-api:
+    internal: true

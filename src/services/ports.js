@@ -10,6 +10,7 @@ const httpError = require('../utils/httpError');
 const net = require('node:net');
 const path = require('node:path');
 const db = require('../db');
+const { safeJsonParse } = require('../utils/safeJson');
 const config = require('../config');
 const containers = require('../docker/containers');
 const logger = require('../logger')(path.basename(__filename));
@@ -96,7 +97,7 @@ function dbPortsInUse({ exceptServerId } = {}) {
   // BlueMap's web-server port lives in `integrations`, not on the server row -
   // it must be unioned in too, or a fresh port allocation could collide with it.
   for (const row of db.all("SELECT config_json FROM integrations WHERE kind = 'bluemap' AND enabled = 1")) {
-    const hostPort = JSON.parse(row.config_json || '{}').hostPort;
+    const hostPort = safeJsonParse(row.config_json, {}, { where: 'integrations.config_json:bluemap' }).hostPort;
     if (hostPort) used.add(hostPort);
   }
   used.add(config.port); // never hand out the panel's own port

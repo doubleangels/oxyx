@@ -108,6 +108,10 @@ function packServerVMs() {
   });
 }
 
+/**
+ * @param {any} s
+ * @param {{ withLive?: boolean, ctx?: any }} [opts]
+ */
 async function serverVM(s, { withLive = true, ctx = null } = {}) {
   // ctx (optional) carries pre-fetched per-server DB reads batched across the
   // whole list (see serverVMs) so a dashboard with N servers issues ~O(N)
@@ -164,7 +168,7 @@ async function serverVM(s, { withLive = true, ctx = null } = {}) {
     // Java up front reads as fully used from the first minute, so the meters
     // say so and where the heap sits relative to the container limit.
     memory: memoryVM(s),
-    stats: { cpuPct: 0, memUsedMb: 0, uptime: null, perf: null, perfSupported: true },
+    stats: { cpuPct: 0, memUsedMb: 0, uptime: /** @type {string | null} */ (null), perf: null, perfSupported: true },
     players: { online: 0, max: Number(s.env.MAX_PLAYERS) || 20, names: [] },
     disk: { used: diskUsedFor(s.id), quota: s.disk_quota_bytes },
     pack,
@@ -180,6 +184,8 @@ async function serverVM(s, { withLive = true, ctx = null } = {}) {
     // manual version pick (#22).
     packUnpinned: require('../services/packPins').unpinnedPackSelectors(s.type, s.env).length > 0,
     pendingRecreate: Boolean(s.pending_recreate),
+    // Stored settings that could not be read (corrupt JSON) and fell back to empty.
+    damagedSettings: (s.damagedColumns || []).length > 0,
     lastStarted: s.last_started_at || '-',
     created: s.created_at,
     consoleLabel: s.console_label || '',

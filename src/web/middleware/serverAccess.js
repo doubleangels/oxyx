@@ -32,7 +32,7 @@ function wantsJson(req) {
 
 function notFound(req, res) {
   if (wantsJson(req)) return res.status(404).json({ ok: false, error: 'Server not found.' });
-  return res.status(404).render('error', { title: 'Not found', code: 404, message: 'That page does not exist.' });
+  return res.status(404).render('error', { title: 'Not Found', code: 404, message: 'That page does not exist.' });
 }
 
 function forbidden(req, res, cap) {

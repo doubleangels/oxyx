@@ -263,6 +263,90 @@ router.delete(
   })
 );
 
+// ---- Push notifications to installed devices (self-service, every role) ----
+// The browser does the subscribing; these routes store the subscription and
+// each device's choices. Only the signed-in user's own devices are reachable.
+const push = require('../../services/push');
+
+const prefsSchema = z
+  .object({
+    categories: z.record(z.string().max(20), z.boolean()).optional(),
+    servers: z.union([z.literal('all'), z.array(z.string().max(48)).max(500)]).optional(),
+    quiet: z
+      .object({
+        enabled: z.boolean().optional(),
+        from: z.string().max(5).optional(),
+        to: z.string().max(5).optional(),
+        allowCritical: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .optional();
+
+router.get(
+  '/push',
+  asyncHandler((req, res) => {
+    const endpoint = typeof req.query.endpoint === 'string' ? req.query.endpoint : '';
+    const permissions = require('../../services/permissions');
+    const servers = permissions
+      .filterVisible(req.user, require('../../services/servers').listServers())
+      .map((s) => ({ id: s.id, name: /** @type {any} */ (s).display_name }));
+    res.json({
+      ok: true,
+      publicKey: push.publicKey(),
+      categories: push.CATEGORIES,
+      defaults: push.defaultPrefs(),
+      devices: push.listDevices(req.user.id),
+      thisDevice: endpoint ? push.deviceForEndpoint(req.user.id, endpoint) : null,
+      servers,
+    });
+  })
+);
+
+router.post(
+  '/push/subscribe',
+  asyncHandler(async (req, res) => {
+    const input = z
+      .object({
+        subscription: z.object({
+          endpoint: z.string().url().max(1000),
+          keys: z.object({ p256dh: z.string().max(200), auth: z.string().max(64) }),
+        }),
+        deviceName: z.string().max(60).optional(),
+        prefs: prefsSchema,
+      })
+      .parse(req.body);
+    const device = await push.subscribe(req.user.id, {
+      ...input,
+      userAgent: String(req.headers['user-agent'] || ''),
+    });
+    res.status(201).json({ ok: true, device });
+  })
+);
+
+router.patch(
+  '/push/devices/:id',
+  asyncHandler((req, res) => {
+    const input = z.object({ deviceName: z.string().max(60).optional(), prefs: prefsSchema }).parse(req.body);
+    res.json({ ok: true, device: push.updateDevice(req.user.id, req.params.id, input) });
+  })
+);
+
+router.delete(
+  '/push/devices/:id',
+  asyncHandler((req, res) => {
+    push.removeDevice(req.user.id, req.params.id);
+    res.json({ ok: true });
+  })
+);
+
+router.post(
+  '/push/devices/:id/test',
+  asyncHandler(async (req, res) => {
+    res.json(await push.sendTest(req.user.id, req.params.id));
+  })
+);
+
 router.use(makeJsonErrorHandler('account', { fileTooLarge: AVATAR_TOO_LARGE }));
 
 module.exports = router;

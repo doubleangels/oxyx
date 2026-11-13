@@ -29,7 +29,7 @@ test('Run Now answers at once and records who ran it; an unknown schedule is a 4
   assert.equal(r.status, 202);
   const ev = db.get("SELECT actor, summary FROM events WHERE type = 'schedule-run-now' ORDER BY id DESC LIMIT 1");
   assert.equal(ev.actor, 'admin');
-  assert.equal(ev.summary, 'Ran a scheduled task now: Clear temporary files.');
+  assert.equal(ev.summary, 'Ran a scheduled task now: Clear Temporary Files.');
   const missing = await app.req('POST', '/api/schedules/sch_nope/run', { cookie });
   assert.equal(missing.status, 404);
 });

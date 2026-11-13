@@ -14,7 +14,7 @@
 {{#if updates.length}}
 <div class="card overflow-x-auto">
   <table class="table-base table-stack" id="updates-table">
-    <thead><tr><th>Server</th><th>Type</th><th>Subject</th><th>Current</th><th>Latest</th><th class="text-right">Actions</th></tr></thead>
+    <thead><tr><th scope="col">Server</th><th scope="col">Type</th><th scope="col">Subject</th><th scope="col">Current</th><th scope="col">Latest</th><th scope="col" class="text-right">Actions</th></tr></thead>
     <tbody>
       {{#each updates}}
         <tr data-update-row class="{{#if ignored}}opacity-60{{/if}}" data-server-id="{{serverId}}" data-server-name="{{server}}"
@@ -53,4 +53,4 @@
 {{else}}
   {{> empty-state iconName='circle-check' title='Everything Is Up to Date' message='No pending updates across your servers. Run a check to ask Modrinth, CurseForge, Hangar, SpigotMC, GitHub Releases and the Minecraft/loader/image registries for anything new.'}}
 {{/if}}
-<script type="module" src="/js/pages/updates.js"></script>
+<script type="module" src="{{asset '/js/pages/updates.js'}}"></script>

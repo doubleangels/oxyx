@@ -847,7 +847,10 @@ const TITLE_ELEMENTS = [
   // A disabled option, or one that reads as a sentence or a progress line, is a
   // status message ("Loading biomes…"), not a choice.
   ['choice', /<option\b(?![^>]*\bdisabled\b)[^>]*>(?<t>[\s\S]*?)<\/option>/gi],
-  ['menu item', /<summary\b[^>]*>(?<t>(?:(?!<span|<div)[\s\S])*?)<\/summary>/gi],
+  // A disclosure toggle names what it opens. Icons and other markup inside are
+  // stripped like anywhere else; a summary that holds badges or counters (a
+  // status row, not a caption) opts out with data-summary-row.
+  ['menu item', /<summary\b(?![^>]*\bdata-summary-row\b)[^>]*>(?<t>[\s\S]*?)<\/summary>/gi],
   ['button link', /<a\b[^>]*class="[^"]*\bbtn\b[^"]*"[^>]*>(?<t>[\s\S]*?)<\/a>/gi],
   ['tab', /<([a-z]+)\b[^>]*role="tab"[^>]*>(?<t>[\s\S]*?)<\/\1>/gi],
   ['menu choice', /<([a-z]+)\b[^>]*role="(?:menuitem|option)"[^>]*>(?<t>[\s\S]*?)<\/\1>/gi],

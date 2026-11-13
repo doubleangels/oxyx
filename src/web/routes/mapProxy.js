@@ -2,7 +2,19 @@
 
 // Authenticated reverse proxy for BlueMap's web UI: the map port is never
 // exposed to the browser directly - everything flows through the panel's
-// session-gated /map/<serverId>/… path. Plain stdlib http, GET/HEAD only.
+// /map/<serverId>/t/<token>/… path. Plain stdlib http, GET/HEAD only.
+//
+// The map's HTML and JS come from the server's data folder (bluemap/web/),
+// which anyone with file access to that server, or any mod in the container,
+// can rewrite. So the map must never run with the panel's privileges:
+//  - It is authenticated by a short-lived HMAC token in the path (minted when
+//    the Map tab renders, after the `view` check), never by the session
+//    cookie. The router mounts before the session middleware.
+//  - Every proxied response carries a `sandbox allow-scripts` CSP, and the
+//    iframe has sandbox="allow-scripts", so the document gets an opaque origin:
+//    its scripts cannot read panel cookies, storage or same-origin APIs.
+//  - The token is checked on every request, and the user it names must still
+//    exist and still have `view` on that server.
 //
 // BlueMap's HOST-published port (127.0.0.1 bare metal, host.docker.internal
 // when the panel is containerized - see config.mapProxyHost) is only ONE of
@@ -18,6 +30,7 @@
 // the cached one stops working (a fresh probe on every tile/asset request
 // would be far too slow).
 
+const crypto = require('node:crypto');
 const http = require('node:http');
 const net = require('node:net');
 const path = require('node:path');
@@ -30,8 +43,56 @@ const containers = require('../../docker/containers');
 const { getMapConfig, BLUEMAP_CONTAINER_PORT } = require('../../services/map');
 const { getServer } = require('../../services/servers');
 const permissions = require('../../services/permissions');
+const authService = require('../../services/auth');
 
 const router = express.Router();
+
+// Long enough for a map tab left open through an evening, short enough that a
+// leaked URL goes stale. Revocation does not wait for expiry: the user's
+// `view` permission is re-checked on every request.
+const TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
+
+// Overrides the panel CSP on every map response: an opaque-origin sandbox with
+// the loose script rules BlueMap's bundle needs (it is not panel code).
+const MAP_CSP =
+  "sandbox allow-scripts; default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'self'";
+
+function signToken(body) {
+  return crypto.createHmac('sha256', config.sessionSecret).update(`map-token:${body}`).digest('base64url');
+}
+
+/**
+ * Mint a map token for one user on one server. Call only after `view` passed.
+ * @param {string} serverId
+ * @param {string} userId
+ * @param {number} [now]
+ */
+function mintMapToken(serverId, userId, now = Date.now()) {
+  const body = Buffer.from(JSON.stringify({ s: serverId, u: userId, e: now + TOKEN_TTL_MS })).toString('base64url');
+  return `${body}.${signToken(body)}`;
+}
+
+/**
+ * The token's payload when it is genuine, unexpired and for `serverId`, else null.
+ * @param {string} token
+ * @param {string} serverId
+ * @returns {{ s: string, u: string, e: number } | null}
+ */
+function verifyMapToken(token, serverId) {
+  const [body, sig] = String(token || '').split('.');
+  if (!body || !sig) return null;
+  const expected = Buffer.from(signToken(body));
+  const given = Buffer.from(sig);
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+  if (!payload || payload.s !== serverId || typeof payload.e !== 'number' || payload.e < Date.now()) return null;
+  return payload;
+}
 
 const CONTAINER_PORT = parseInt(BLUEMAP_CONTAINER_PORT, 10); // '8100/tcp' -> 8100
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -98,14 +159,27 @@ async function resolveTarget(server, cfg) {
 }
 
 router.use(
-  '/:id',
+  '/:id/t/:token',
   asyncHandler(async (req, res) => {
+    res.setHeader('Content-Security-Policy', MAP_CSP);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Referrer-Policy', 'no-referrer');
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       logger.debug('Rejected a non-GET request to the map proxy.', { serverId: req.params.id, method: req.method });
       return res.status(405).send('Method not allowed');
     }
+    const grant = verifyMapToken(req.params.token, req.params.id);
+    const user = grant ? authService.getUser(grant.u) : null;
+    if (!user) {
+      logger.debug('Rejected a map proxy request without a valid token.', { serverId: req.params.id });
+      return res.status(404).send('Live map is not enabled for this server');
+    }
+    // BlueMap loads its assets with relative URLs, so the root needs its slash.
+    if (req.url === '/' && !req.originalUrl.split('?')[0].endsWith('/')) {
+      return res.redirect(301, `${req.baseUrl}/`);
+    }
     const server = getServer(req.params.id);
-    const visible = server && permissions.can(req.user, server.id, 'view');
+    const visible = server && permissions.can(user, server.id, 'view');
     const cfg = visible ? getMapConfig(server.id) : { enabled: false };
     if (!server || !visible || !cfg.enabled || !cfg.hostPort) {
       logger.debug('Rejected a map proxy request for a server without a live map.', { serverId: req.params.id });
@@ -182,4 +256,10 @@ router.use(
   })
 );
 
-module.exports = router;
+// The old session-authenticated path (and anything without a token) is gone.
+router.use('/:id', (req, res) => {
+  logger.debug('Rejected a map proxy request without a token.', { serverId: req.params.id });
+  res.status(404).send('Live map is not enabled for this server');
+});
+
+module.exports = Object.assign(router, { mintMapToken, verifyMapToken });

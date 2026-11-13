@@ -18,6 +18,7 @@ const { nanoid } = require('nanoid');
 const { z } = require('zod');
 const db = require('../db');
 const { dataPath, safeJoin } = require('../storage/pathGuard');
+const logger = require('../logger')(path.basename(__filename));
 
 // Starter blueprints inherit the panel's host-aware resource defaults so they
 // import cleanly on a small VPS as well as a big workstation.
@@ -68,10 +69,22 @@ const KNOWN_TYPES = new Set([
 
 // ---- Manifest schema (oxyx: 1 / msm: 1) ----
 
+// A bare file name: no separators, no NUL, not "." or "..". Manifest names are
+// joined onto extraction folders, so anything else could reach outside them.
+const BARE_NAME_RE = /^[^\\/\0]+$/;
+const isBareName = (v) => BARE_NAME_RE.test(v) && v !== '.' && v !== '..';
+const bareNameSchema = z.string().max(200).refine(isBareName, { message: 'Must be a bare file name.' });
+// A relative path whose every segment is a bare name ("config/sub/a.toml").
+const relPathSchema = z
+  .string()
+  .min(1)
+  .max(300)
+  .refine((v) => v.split('/').every(isBareName), { message: 'Must be a relative path inside the server folder.' });
+
 const overlayEntrySchema = z.object({
   name: z.string().min(1).max(200),
   kind: z.enum(['mod', 'plugin', 'datapack', 'resourcepack']).default('mod'),
-  filename: z.string().max(200).nullable().default(null),
+  filename: bareNameSchema.nullable().default(null),
   sourceUrl: z.string().max(1000).nullable().default(null),
   platform: z.string().max(20).nullable().default(null),
   projectId: z.string().max(60).nullable().default(null),
@@ -128,7 +141,7 @@ const manifestSchema = z
       .nullable()
       .default(null),
     overlay: z.array(overlayEntrySchema).max(500).default([]),
-    configFiles: z.array(z.string().min(1).max(300)).max(2000).default([]),
+    configFiles: z.array(relPathSchema).max(2000).default([]),
     embedFiles: z.boolean().default(false),
     world: z.boolean().default(false),
   })
@@ -237,7 +250,14 @@ async function exportBlueprint(serverId, options = {}, { actor = 'system' } = {}
     archive.pipe(output);
     archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
     for (const rel of configFiles) {
-      archive.file(safeJoin(serverDir, rel), { name: `payload/config/${rel}` });
+      if (rel === 'server.properties') {
+        // The RCON password is a live credential for the source server. The
+        // importing server gets its own from the panel, so leave it blank.
+        const text = fs.readFileSync(safeJoin(serverDir, rel), 'utf8');
+        archive.append(stripRconPassword(text), { name: `payload/config/${rel}` });
+      } else {
+        archive.file(safeJoin(serverDir, rel), { name: `payload/config/${rel}` });
+      }
     }
     if (embedFiles) {
       for (const row of overlayRows) {
@@ -289,16 +309,20 @@ async function importPreview(zipPath) {
   } catch {
     throw httpError(400, 'Blueprint manifest is not valid JSON.');
   }
+  // Path-shaped fields get a specific message before the generic schema check.
+  const unsafePath = [
+    ...(Array.isArray(raw?.configFiles) ? raw.configFiles : []),
+    ...(Array.isArray(raw?.overlay) ? raw.overlay.map((o) => o?.filename) : []),
+  ].find((v) => typeof v === 'string' && !v.split('/').every(isBareName));
+  if (unsafePath !== undefined) {
+    logger.debug('Rejected a blueprint with an unsafe file path.');
+    throw httpError(400, 'The blueprint lists a file path that points outside the server folder.');
+  }
   const parsed = manifestSchema.safeParse(raw);
   if (!parsed.success) {
     throw httpError(400, 'The blueprint manifest is not valid. It may be from a different app.');
   }
   const manifest = parsed.data;
-  for (const rel of manifest.configFiles) {
-    if (rel.split('/').includes('..') || path.isAbsolute(rel)) {
-      throw httpError(400, `Blueprint config file path escapes the server directory: ${rel}.`);
-    }
-  }
 
   const entryNames = new Set(entries.map((e) => e.name));
   const warnings = [];
@@ -429,8 +453,8 @@ async function importBlueprint(zipRef, overrides = {}, { actor = 'system', onPro
 
     // Config files payload → server dir (paths re-guarded against the server dir).
     for (const rel of manifest.configFiles) {
-      const src = path.join(tmpDir, 'payload', 'config', rel);
-      if (!fs.existsSync(src)) continue;
+      const src = safeJoin(path.join(tmpDir, 'payload', 'config'), rel);
+      if (!(await isRegularFile(src))) continue;
       const dest = safeJoin(dataPath('servers', server.id), rel);
       await fsp.mkdir(path.dirname(dest), { recursive: true });
       await fsp.copyFile(src, dest);
@@ -458,13 +482,22 @@ async function importBlueprint(zipRef, overrides = {}, { actor = 'system', onPro
   return { server: servers.getServer(server.id), report };
 }
 
+/** True for a regular file (a symlink is not followed and reads as false). */
+async function isRegularFile(abs) {
+  try {
+    return (await fsp.lstat(abs)).isFile();
+  } catch {
+    return false;
+  }
+}
+
 /** One overlay item → {name, status: 'ok'|'hash-mismatch'|'failed', error?}. */
 async function installOverlayItem(entry, server, tmpDir, { actor }) {
   const dirRel = mods.contentDir(server, entry.kind);
   try {
     let lib = null;
-    const embedded = entry.filename ? path.join(tmpDir, 'payload', 'overlay', entry.filename) : null;
-    if (embedded && fs.existsSync(embedded)) {
+    const embedded = entry.filename ? safeJoin(path.join(tmpDir, 'payload', 'overlay'), entry.filename) : null;
+    if (embedded && (await isRegularFile(embedded))) {
       const sha256 = await hashFile(embedded);
       if (entry.sha256 && sha256 !== entry.sha256) {
         return {
@@ -646,6 +679,23 @@ function blueprintVisibleTo(user, bp) {
   const sid = bp && bp.manifest && bp.manifest.sourceServerId;
   if (!sid) return true;
   return permissions.can(user, sid, 'view');
+}
+
+/**
+ * May `user` download, preview by id, import by id or delete this blueprint?
+ * A blueprint carries server.properties and every config file, so it needs the
+ * same `files` capability on its source server that exporting it did. One with
+ * no live source server (uploaded, older, or its server was deleted) has no
+ * one to scope it to, so it is admin-only. Built-in starters hold nothing
+ * private and stay open to everyone.
+ */
+function blueprintUsableBy(user, bp) {
+  if (!bp || !user) return false;
+  if (bp.builtin) return true;
+  if (user.role === 'admin') return true;
+  const sid = bp.manifest && bp.manifest.sourceServerId;
+  if (!sid || !servers.getServer(sid)) return false;
+  return permissions.can(user, sid, 'files');
 }
 
 function listBlueprintsFor(user) {
@@ -834,6 +884,11 @@ function sanitizeEnv(env) {
   return Object.fromEntries(Object.entries(env || {}).filter(([k]) => !SECRET_ENV_RE.test(k)));
 }
 
+/** Blank the value of every `rcon.password=` line in server.properties text. */
+function stripRconPassword(text) {
+  return String(text).replace(/^([ \t]*rcon\.password[ \t]*[=:]).*$/gm, '$1');
+}
+
 function collectConfigFiles(serverDir) {
   const rels = [];
   if (fs.existsSync(path.join(serverDir, 'server.properties'))) rels.push('server.properties');
@@ -860,7 +915,7 @@ function worldDirsOf(server, serverDir) {
   // renamed/activated world would otherwise be silently missing from exports.
   const level = require('../services/worlds').activeLevelName(server);
   return [level, `${level}_nether`, `${level}_the_end`]
-    .map((name) => ({ name, abs: path.join(serverDir, name) }))
+    .map((name) => ({ name, abs: safeJoin(serverDir, name) }))
     .filter((d) => fs.existsSync(d.abs) && fs.statSync(d.abs).isDirectory());
 }
 
@@ -896,6 +951,8 @@ module.exports = {
   listBlueprints,
   listBlueprintsFor,
   blueprintVisibleTo,
+  blueprintUsableBy,
+  stripRconPassword,
   getBlueprint,
   getBlueprintPath,
   deleteBlueprint,

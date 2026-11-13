@@ -2,12 +2,14 @@
 'use strict';
 
 // Container lifecycle for managed Minecraft servers. All containers are
-// labeled msm.id=<serverId> and named msm-<serverId>.
+// labeled msm.id=<serverId> and named oxyx-<serverId> (or the admin's own name).
 
 const path = require('node:path');
 const { getDocker } = require('./connect');
 const { toHostPath } = require('./hostPath');
 const { ensureNetwork } = require('./networks');
+const { resolveInternalBindIp } = require('./internalBind');
+const config = require('../config');
 const db = require('../db');
 const logger = require('../logger')(path.basename(__filename));
 const { redactCommand } = require('../utils/logSanitize');
@@ -17,8 +19,13 @@ const GAME_PORT = '25565';
 const RCON_PORT = '25575';
 const BEDROCK_PORT = '19132';
 
+// The default container name. Servers created before the rename may still run
+// as msm-<serverId>: containerRef() resolves them by their recorded container
+// id, so the name only matters for a server that has never had a container.
+// The Docker labels keep their msm.* keys because Docker cannot relabel a
+// running container, and the watcher and orphan checks match on them.
 function containerName(serverId) {
-  return `msm-${serverId}`;
+  return `oxyx-${serverId}`;
 }
 
 /**
@@ -30,12 +37,20 @@ function containerName(serverId) {
  * @param {string} spec.dataDir          absolute panel-local data dir, re-rooted to the host and bind-mounted to /data
  * @param {object} spec.ports            { game, rcon, bedrock? } host ports
  * @param {object} spec.resources        { memoryMb, swapMb, cpus }
- * @param {string} [spec.containerName]  Docker container name override; default `msm-<serverId>`
+ * @param {string} [spec.containerName]  Docker container name override; default `oxyx-<serverId>`
  * @param {string} [spec.networkName]    host Docker network to attach to; created if it does not exist; default bridge
+ * @param {Array}  [spec.extraPorts]     [{container: '8100/tcp', host, internal?}] feature + admin extra ports
  * @param {Array}  [spec.extraBinds]     [{hostPath, containerPath, mode: 'rw'|'ro'}] - RAW host paths, not re-rooted
+ *
+ * RCON and any extra port marked `internal: true` (BlueMap) are published on
+ * the internal bind address only (see internalBind.js). The game, Bedrock and
+ * admin-added extra ports are meant to be public and keep every interface.
  */
 async function createContainer(spec) {
   const docker = getDocker();
+  const internalIp = await resolveInternalBindIp();
+  const internal = (port) =>
+    internalIp ? [{ HostIp: internalIp, HostPort: String(port) }] : [{ HostPort: String(port) }];
   const exposed = {
     [`${GAME_PORT}/tcp`]: {},
     [`${GAME_PORT}/udp`]: {}, // query protocol shares the game port
@@ -44,7 +59,7 @@ async function createContainer(spec) {
   const bindings = {
     [`${GAME_PORT}/tcp`]: [{ HostPort: String(spec.ports.game) }],
     [`${GAME_PORT}/udp`]: [{ HostPort: String(spec.ports.game) }],
-    [`${RCON_PORT}/tcp`]: [{ HostPort: String(spec.ports.rcon) }],
+    [`${RCON_PORT}/tcp`]: internal(spec.ports.rcon),
   };
   if (spec.ports.bedrock) {
     exposed[`${BEDROCK_PORT}/udp`] = {};
@@ -53,7 +68,7 @@ async function createContainer(spec) {
   // Feature ports (e.g. BlueMap's web server) + user-defined extras - [{container: '8100/tcp', host: 8123}]
   for (const extra of spec.extraPorts || []) {
     exposed[extra.container] = {};
-    bindings[extra.container] = [{ HostPort: String(extra.host) }];
+    bindings[extra.container] = extra.internal ? internal(extra.host) : [{ HostPort: String(extra.host) }];
   }
 
   const memoryBytes = Math.round(spec.resources.memoryMb * 1024 * 1024);
@@ -74,7 +89,12 @@ async function createContainer(spec) {
     MemorySwap: swapBytes,
     NanoCpus: spec.resources.cpus ? Math.round(spec.resources.cpus * 1e9) : 0,
     RestartPolicy: { Name: 'no' }, // the panel owns restarts (crash backoff, quota stops)
+    // The itzg entrypoint starts as root and drops to the server user itself,
+    // which no-new-privileges allows; it only blocks regaining root through a
+    // setuid binary afterwards.
+    SecurityOpt: ['no-new-privileges:true'],
   };
+  if (config.containerPidsLimit > 0) hostConfig.PidsLimit = config.containerPidsLimit;
   if (spec.networkName) {
     const created = await ensureNetwork(spec.networkName);
     if (created) logger.info('Created a Docker network.', { networkName: spec.networkName, serverId: spec.serverId });
@@ -89,6 +109,7 @@ async function createContainer(spec) {
     containerName: name,
     image: spec.image,
     ports: spec.ports,
+    internalBind: internalIp || 'all',
     extraPorts: spec.extraPorts && spec.extraPorts.length ? spec.extraPorts : undefined,
     memoryMb: spec.resources.memoryMb,
     swapMb: spec.resources.swapMb || 0,

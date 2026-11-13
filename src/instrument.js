@@ -48,7 +48,7 @@ function recordDistribution(_name, _value, _tags) {}
  * @returns {T}
  */
 function startSpan(_opts, fn) {
-  return typeof fn === 'function' ? fn() : undefined;
+  return typeof fn === 'function' ? fn() : /** @type {T} */ (/** @type {unknown} */ (undefined));
 }
 
 module.exports = {

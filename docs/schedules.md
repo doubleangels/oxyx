@@ -12,11 +12,11 @@ The **Schedules** page automates recurring tasks with cron expressions. No exter
 - **Stops and starts**: take a server down overnight and bring it back in the morning.
 - **Backups**: regular snapshots (tagged `scheduled` on the [Backups](backups.md) page). A backup schedule can also shrink the world after each backup ([shrinking a world](world-shrink.md)). Every new server gets a daily backup schedule automatically.
 - **Commands**: run any server command on a schedule.
-- **Update checks**: periodically refresh what's out of date. The scheduled check is also what applies updates for servers set to [Auto-Update](modpacks.md#update-policy).
-- **Back up all servers**: one schedule that backs up every server in turn, skipping stopped servers that are already backed up.
-- **Restart all running servers**: one schedule that restarts every running server in turn. Servers that are still starting up or stopped are left alone.
+- **Update Check**: periodically refresh what's out of date. The scheduled check is also what applies updates for servers set to [Auto-Update](modpacks.md#update-policy).
+- **Back Up All Servers**: one schedule that backs up every server in turn, skipping stopped servers that are already backed up.
+- **Restart All Running Servers**: one schedule that restarts every running server in turn. Servers that are still starting up or stopped are left alone.
 
-Each schedule targets a specific server (or the panel globally), runs on its own cron expression, and can be enabled or disabled without deleting it. The editor previews the next run times as you type, cron times follow the panel's time zone (set in **Settings**), and the table shows each schedule's next run. Every firing is recorded as a history event, and so is a failed run.
+Each schedule targets a specific server (or the panel globally), runs on its own cron expression, and can be enabled or disabled without deleting it. The editor previews the next run times as you type, cron times follow the panel's time zone (set in **Panel Settings**), and the table shows each schedule's next run. Every firing is recorded as a history event, and so is a failed run.
 
 The panel also seeds its own maintenance schedules on first boot, which you can retime or turn off: a daily update check, a storage re-scan every six hours, a daily clear of old temporary files, a ban expiry sweep every 15 minutes (lifting temporary bans that have run out), and a nightly content metadata backfill (filling in missing mod names and icons).
 

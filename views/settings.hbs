@@ -11,6 +11,7 @@
     <a class="subtab shrink-0" href="#sec-keys" data-jump="sec-keys">{{{icon 'key' 'size-3.5'}}} Mod Site Keys</a>
     <a class="subtab shrink-0" href="#api-tokens-card" data-jump="api-tokens-card">{{{icon 'code' 'size-3.5'}}} Public API</a>
     <a class="subtab shrink-0" href="/settings/permissions">{{{icon 'shield-check' 'size-3.5'}}} Users</a>
+    <a class="subtab shrink-0" href="/settings/app">{{{icon 'smartphone' 'size-3.5'}}} Mobile App</a>
   </nav>
 
   <div class="min-w-0 space-y-5 [&>*]:min-w-0 [&>section]:scroll-mt-32">
@@ -52,9 +53,9 @@
         <span class="label">Panel Version</span>
         <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
           <span class="font-mono text-sm">v{{panel.version}}</span>
-          <button class="btn" id="msm-update-btn">Check for Updates</button>
+          <button class="btn" id="panel-update-btn">Check for Updates</button>
         </div>
-        <div id="msm-update-out"></div>
+        <div id="panel-update-out"></div>
         <p class="help">Compares the installed version with the latest release on GitHub. You download and install the update yourself. The panel never modifies its own files.</p>
       </div>
 
@@ -150,7 +151,7 @@
       <p class="help mt-0 max-w-prose">Each app connects with its own <b>access key</b> (sent as an <span class="font-mono">Authorization: Bearer</span> header). Make one key per app; anyone holding a key can see the servers you allow it: name, type, whether it's running, players online, and resource use. Cancel a key to cut that app off straight away.</p>
       <div class="mt-4 overflow-x-auto">
         <table class="table-base table-stack" id="api-tokens-table">
-          <thead><tr><th>Name</th><th>Key</th><th>Can See</th><th>Created</th><th>Last Used</th><th>Expires</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+          <thead><tr><th scope="col">Name</th><th scope="col">Key</th><th scope="col">Can See</th><th scope="col">Created</th><th scope="col">Last Used</th><th scope="col">Expires</th><th scope="col">Status</th><th scope="col" class="text-right">Actions</th></tr></thead>
           <tbody>
             {{#each apiTokens}}
               <tr data-token-id="{{id}}">
@@ -188,4 +189,4 @@
   </div>
 </div>
 <script type="application/json" id="settings-self">{{jsonScript selfUserId}}</script>
-<script type="module" src="/js/pages/settings.js"></script>
+<script type="module" src="{{asset '/js/pages/settings.js'}}"></script>

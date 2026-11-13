@@ -36,14 +36,14 @@ test('a mixed change set produces labelled rows and needsRecreate', async () => 
   });
   assert.equal(r.status, 200);
   const labels = r.json.changes.map((c) => c.label);
-  assert.ok(labels.includes('Display name'), `should list the renamed display name, got ${labels}`);
-  assert.ok(labels.includes('Java heap'), `should list the heap change, got ${labels}`);
+  assert.ok(labels.includes('Display Name'), `should list the renamed display name, got ${labels}`);
+  assert.ok(labels.includes('Java Heap'), `should list the heap change, got ${labels}`);
   assert.equal(r.json.needsRecreate, true);
-  const heapRow = r.json.changes.find((c) => c.label === 'Java heap');
+  const heapRow = r.json.changes.find((c) => c.label === 'Java Heap');
   assert.equal(heapRow.before, 1024);
   assert.equal(heapRow.after, 2048);
   assert.equal(heapRow.requiresRebuild, true);
-  assert.equal(r.json.changes.find((c) => c.label === 'Display name').requiresRebuild, false);
+  assert.equal(r.json.changes.find((c) => c.label === 'Display Name').requiresRebuild, false);
 });
 
 test('cosmetic-only changes do not flag a rebuild', async () => {
@@ -64,7 +64,7 @@ test('tags and the disk quota sent unchanged with every save are not listed', as
   const r = servers.summarizeServerChanges('diff01', { tags: [...tags].reverse(), diskQuotaGb: quotaGb });
   assert.deepEqual(r.changes, [], 'same tags (any order) and same quota are no change');
   const changed = servers.summarizeServerChanges('diff01', { tags: [...tags, 'new-tag'], diskQuotaGb: quotaGb + 5 });
-  assert.deepEqual(changed.changes.map((c) => c.label).sort(), ['Disk quota', 'Tags']);
+  assert.deepEqual(changed.changes.map((c) => c.label).sort(), ['Disk Quota', 'Tags']);
 });
 
 test('env differences expand per key, with catalog labels, additions and deletions', async () => {
@@ -104,8 +104,8 @@ test('extra port mappings and volume binds report their real before/after counts
     ],
     extraBinds: [],
   });
-  const ports = r.changes.find((c) => c.label === 'Extra port mappings');
-  const binds = r.changes.find((c) => c.label === 'Extra volume binds');
+  const ports = r.changes.find((c) => c.label === 'Extra Port Mappings');
+  const binds = r.changes.find((c) => c.label === 'Extra Volume Binds');
   assert.ok(ports, 'port row present');
   assert.ok(binds, 'bind row present');
   assert.equal(ports.before, '1', 'before count comes from the stored list');

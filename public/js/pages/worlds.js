@@ -100,7 +100,7 @@ export function uploadWorldModal({ onDone } = {}) {
             activeXhr = xhr;
             xhr.addEventListener('abort', () => {
               busy = false;
-              toast('Upload cancelled.', { kind: 'info' });
+              toast('Upload canceled.', { kind: 'info' });
               resolve(false);
             });
             xhr.open('POST', '/api/worlds/upload');
@@ -268,7 +268,7 @@ export async function installWithConfirm(url, body) {
   if (!res) return null;
   if (res.requiresConfirm) {
     const ok = await confirmDialog({
-      title: 'Compatibility warnings',
+      title: 'Compatibility Warnings',
       message: 'The panel found possible problems with this install:',
       detail: res.warnings.join('\n\n'),
       confirmLabel: 'Install Anyway',

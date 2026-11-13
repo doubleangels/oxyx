@@ -26,6 +26,7 @@ const crypto = require('node:crypto');
 const config = require('../config');
 const logger = require('../logger')('setup-gate');
 
+/** @type {string | null} */
 let pin = null;
 
 const MAX_ATTEMPTS = 10;
@@ -77,7 +78,7 @@ function check(candidate, ip = null) {
   if (!required()) return true;
   const now = Date.now();
   if (isLocked(ip, now)) return false;
-  const want = ensurePin();
+  const want = /** @type {string} */ (ensurePin()); // required() above guarantees a PIN
   const got = String(candidate == null ? '' : candidate);
   if (got.length !== want.length) {
     recordFailure(ip, now);

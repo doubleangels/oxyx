@@ -280,6 +280,9 @@ test('hidden server: 404 on pages and API, refused actions read as not found', a
   // An action on a hidden server is 404, never 403 (no existence leak).
   assert.equal((await app.req('POST', `/api/servers/${A}/stop`, { cookie: viewerCookie })).status, 404);
   assert.equal((await app.req('GET', `/map/${A}/`, { cookie: viewerCookie })).status, 404);
+  // A map token minted before the server was hidden stops working at once.
+  const { mintMapToken } = require('../src/web/routes/mapProxy');
+  assert.equal((await app.req('GET', `/map/${A}/t/${mintMapToken(A, viewerId)}/`)).status, 404);
   // B is still there.
   assert.equal((await app.req('GET', `/api/servers/${B}/logs`, { cookie: viewerCookie })).status, 200);
 });
@@ -619,6 +622,63 @@ test('blueprints: export and clone need files on the source; hidden reads as mis
     viewerList.json.blueprints.some((b) => b.id === bpId),
     'viewer can view A, so sees it'
   );
+});
+
+test('blueprint download, preview, import and delete need files on the source (F-29)', async () => {
+  const fs = require('node:fs');
+  const { dataPath } = require('../src/storage/pathGuard');
+  const { readZipIndex } = require('../src/utils/zip');
+  fs.mkdirSync(dataPath('servers', B), { recursive: true });
+  fs.writeFileSync(
+    dataPath('servers', B, 'server.properties'),
+    'motd=Hi\nrcon.password=hunter2secret\nrcon.port=25575\n'
+  );
+  await app.req('PUT', `/api/permissions/${viewerId}/${B}`, { cookie: adminCookie, body: { perms: null } });
+  const exported = await app.req('POST', '/api/blueprints/export', { cookie: adminCookie, body: { serverId: B } });
+  assert.equal(exported.status, 201);
+  const bpId = exported.json.blueprint.id;
+
+  // Viewer (view only on B): sees it in the list, cannot read or delete it.
+  const list = await app.req('GET', '/api/blueprints', { cookie: viewerCookie });
+  assert.ok(list.json.blueprints.some((b) => b.id === bpId));
+  const dl = await app.req('GET', `/api/blueprints/${bpId}/download`, { cookie: viewerCookie });
+  assert.equal(dl.status, 403);
+  assert.match(dl.json.error, /files permission/);
+  assert.equal(
+    (await app.req('POST', '/api/blueprints/import-preview', { cookie: viewerCookie, body: { blueprintId: bpId } }))
+      .status,
+    403
+  );
+  // Operator without files on B: same for import and delete.
+  await app.req('PUT', `/api/permissions/${operatorId}/${B}`, {
+    cookie: adminCookie,
+    body: { perms: ['view', 'content'] },
+  });
+  assert.equal(
+    (await app.req('POST', '/api/blueprints/import', { cookie: operatorCookie, body: { blueprintId: bpId } })).status,
+    403
+  );
+  assert.equal((await app.req('DELETE', `/api/blueprints/${bpId}`, { cookie: operatorCookie })).status, 403);
+  await app.req('PUT', `/api/permissions/${operatorId}/${B}`, { cookie: adminCookie, body: { perms: null } });
+
+  // With files on B the viewer may download it, and the RCON password is blank.
+  await app.req('PUT', `/api/permissions/${viewerId}/${B}`, {
+    cookie: adminCookie,
+    body: { perms: ['view', 'files'] },
+  });
+  assert.equal((await app.req('GET', `/api/blueprints/${bpId}/download`, { cookie: viewerCookie })).status, 200);
+  const zipPath = require('../src/blueprints').getBlueprintPath(bpId);
+  const { texts } = await readZipIndex(zipPath, { textEntry: (n) => n === 'payload/config/server.properties' });
+  const props = texts.get('payload/config/server.properties');
+  assert.match(props, /^rcon\.password=$/m);
+  assert.doesNotMatch(props, /hunter2secret/);
+  assert.match(props, /^motd=Hi$/m, 'other keys survive');
+  await app.req('PUT', `/api/permissions/${viewerId}/${B}`, { cookie: adminCookie, body: { perms: null } });
+
+  // A blueprint with no source server is admin-only.
+  db.run("UPDATE blueprints SET manifest_json = json_remove(manifest_json, '$.sourceServerId') WHERE id = ?", bpId);
+  assert.equal((await app.req('GET', `/api/blueprints/${bpId}/download`, { cookie: operatorCookie })).status, 403);
+  assert.equal((await app.req('GET', `/api/blueprints/${bpId}/download`, { cookie: adminCookie })).status, 200);
 });
 
 test('tasks, worlds library labels, modpacks, updates badge never name a hidden server', async () => {

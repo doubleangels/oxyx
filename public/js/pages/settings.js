@@ -8,6 +8,7 @@ import { withBusy } from '../lib/loading.js';
 import { fillTimezoneSelect, fillCountrySelect } from '../lib/tzPicker.js';
 import { initRetentionForm } from '../lib/retention.js';
 import { initJumpNav } from '../lib/jumpNav.js';
+import { escapeHtml } from '../lib/format.js';
 
 // Panel Settings and Users & Permissions both load this file; each section
 // below binds only when its markup is on the page.
@@ -135,7 +136,7 @@ function init() {
     content.innerHTML = `
       <div><label class="label" for="at-label">Name</label>
         <input class="input" id="at-label" autocomplete="off" placeholder="e.g. Status page">
-        <p class="help">Just so you can recognise this key in the list later.</p></div>
+        <p class="help">Just so you can recognize this key in the list later.</p></div>
       <div><span class="label">What It Can See</span>
         <label class="flex items-center gap-2 text-sm"><input type="radio" name="at-scope" value="all" checked> Every Server</label>
         <label class="flex items-center gap-2 text-sm"><input type="radio" name="at-scope" value="some"> Only the Ones I Pick</label>
@@ -224,13 +225,6 @@ function init() {
     });
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(
-      /[&<>"']/g,
-      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
-    );
-  }
-
   // ---- Users ----
   document.getElementById('users-table')?.addEventListener('change', async (e) => {
     const select = e.target.closest('[data-user-role]');
@@ -284,7 +278,7 @@ function init() {
         const res = await fetch(`/api/api-tokens/${tokenId}`, { method: 'DELETE' });
         const data = await res.json().catch(() => ({}));
         if (data.ok) {
-          toast('Key cancelled.');
+          toast('Key canceled.');
           document.querySelector(`#api-tokens-table tr[data-token-id="${CSS.escape(tokenId)}"]`)?.remove();
         } else {
           toast(data.error || friendlyError(res, { action: 'cancel that key' }), { kind: 'error' });
@@ -299,7 +293,7 @@ function init() {
       const ok = await confirmDialog({
         title: `Reset two-factor auth for ${username}?`,
         message:
-          'Any in-progress sign-in is cancelled, and they must set up a new authenticator app the next time they sign in.',
+          'Any in-progress sign-in is canceled, and they must set up a new authenticator app the next time they sign in.',
         confirmLabel: 'Reset',
         danger: true,
       });
@@ -444,13 +438,13 @@ function init() {
     }
   }
 
-  // ---- Panel self-update check ("Update MSM") ----
-  const msmUpdateBtn = document.getElementById('msm-update-btn');
-  const msmUpdateOut = document.getElementById('msm-update-out');
-  if (msmUpdateBtn) {
-    msmUpdateBtn.addEventListener('click', async (e) => {
+  // ---- Panel self-update check ("Update Oxyx") ----
+  const panelUpdateBtn = document.getElementById('panel-update-btn');
+  const panelUpdateOut = document.getElementById('panel-update-out');
+  if (panelUpdateBtn) {
+    panelUpdateBtn.addEventListener('click', async (e) => {
       const btn = e.currentTarget;
-      if (msmUpdateOut) msmUpdateOut.textContent = '';
+      if (panelUpdateOut) panelUpdateOut.textContent = '';
       await withBusy(btn, 'Checking…', async () => {
         let data;
         try {
@@ -468,27 +462,27 @@ function init() {
           return;
         }
         const u = data.update || {};
-        if (!msmUpdateOut) return;
+        if (!panelUpdateOut) return;
         const esc = (s) =>
           String(s).replace(
             /[&<>"']/g,
             (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
           );
         if (u.error && !u.latest) {
-          msmUpdateOut.innerHTML = `<p class="help mt-2 text-danger">Could not check GitHub right now: ${esc(u.error)}</p>`;
+          panelUpdateOut.innerHTML = `<p class="help mt-2 text-danger">Could not check GitHub right now: ${esc(u.error)}</p>`;
           return;
         }
         if (u.isNewer && u.latest && u.latest.htmlUrl) {
-          msmUpdateOut.innerHTML = `
+          panelUpdateOut.innerHTML = `
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <span class="chip">Update available: v${esc(u.latest.version)}</span>
-              <a class="btn" href="${esc(u.latest.htmlUrl)}" target="_blank" rel="noopener noreferrer">Update MSM</a>
+              <a class="btn" href="${esc(u.latest.htmlUrl)}" target="_blank" rel="noopener noreferrer">Update Oxyx</a>
             </div>
             <p class="help mt-1">You are running v${esc(u.current)}. Download the release and follow its install instructions.</p>`;
         } else if (u.latest) {
-          msmUpdateOut.textContent = `You are on the latest release (v${u.current}).`;
+          panelUpdateOut.textContent = `You are on the latest release (v${u.current}).`;
         } else {
-          msmUpdateOut.textContent = `Running v${u.current}.`;
+          panelUpdateOut.textContent = `Running v${u.current}.`;
         }
       });
     });
@@ -581,7 +575,7 @@ function init() {
       clearAllBtn.classList.remove('hidden');
       lockBody.innerHTML = `
         <div class="overflow-x-auto"><table class="table-base table-stack"><thead><tr>
-          <th>Account</th><th>Scope</th><th>Address</th><th>Fails</th><th>Clears in</th><th class="text-right"></th>
+          <th scope="col">Account</th><th scope="col">Scope</th><th scope="col">Address</th><th scope="col">Fails</th><th scope="col">Clears in</th><th scope="col" class="text-right"></th>
         </tr></thead><tbody>${list
           .map(
             (l) => `<tr>

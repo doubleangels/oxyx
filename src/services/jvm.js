@@ -43,6 +43,7 @@ function heapPlan(env, heapMb) {
   const maxMb = parseMemMb(e.MAX_MEMORY) || Number(heapMb) || 0;
   const initMb = parseMemMb(e.INIT_MEMORY) || maxMb;
   const growsOnDemand = initMb < maxMb;
+  /** @type {string | null} */
   let note = null;
   if (maxMb > 0) {
     note = growsOnDemand

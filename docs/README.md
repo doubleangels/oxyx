@@ -1,5 +1,10 @@
 # Oxyx Documentation
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/oxyx-logo-dark.svg">
+  <img src="brand/oxyx-logo-light.svg" alt="Oxyx" width="240">
+</picture>
+
 A complete, self-hosted control panel for [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server). Create, run, and manage Minecraft servers from your browser. No command line, no editing YAML by hand.
 
 ![Dashboard](images/dashboard.png)
@@ -33,6 +38,7 @@ A complete, self-hosted control panel for [itzg/docker-minecraft-server](https:/
 
 - **[Users & roles](users-and-roles.md)**: admin, operator, and viewer, what each can do, and per-server permissions that refine them.
 - **[Two-factor authentication](two-factor-authentication.md)**: protect your login with an authenticator app.
+- **[Mobile app](mobile-app.md)**: install Oxyx on your phone, get push notifications about crashes and problems, and set up the app on each device.
 
 ## Guides
 

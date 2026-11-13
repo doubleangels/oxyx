@@ -5,6 +5,164 @@ All notable changes to this project are documented here. The format is based on
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each push is cut as a new release with
 its own dated entry.
 
+## [Unreleased]
+
+### Added
+
+- **Push notifications to your phone, and a Mobile App page.** Open **Mobile App** in the sidebar
+  (every role can) to install Oxyx and turn on notifications for each device: crashes and problems
+  arrive even when the app is closed. Choose per device which kinds of events notify (crashes,
+  problems, updates, start and stop, backups, moderation, player joins), which servers, and quiet
+  hours that can still let urgent ones through. Your Devices lists every device with a test button.
+  The page also sets per-device app options: the alert count on the app icon, keeping the screen on
+  in the console, a buzz on server actions, and which page the app opens on. On Android you can
+  share a mod or plugin link to Oxyx and add it to a server. See `docs/mobile-app.md`.
+
+### Changed
+
+- **New server containers are named `oxyx-<server id>`** instead of `msm-<server id>`. Existing
+  containers keep working under their old name, because the panel finds them by their Docker id.
+  To rename one by hand, run `docker rename msm-<server id> oxyx-<server id>`. It is safe while the
+  server runs, and a rebuild from the panel also creates it under the new name. Custom container
+  names are untouched, and the `msm-` prefix stays reserved.
+
+### Fixed
+
+- **Push notifications recover from a new panel key.** If the panel ever has to make a new push
+  key, a device that had notifications on now shows them as off, and Turn On makes a fresh
+  subscription instead of reusing the old one that could no longer receive anything. If the
+  browser cannot start the panel's background worker, the page now says so instead of staying on
+  Checking… forever.
+- **Tapping a notification always lands on the right page.** When the open window could not be
+  moved, the tap only brought it to the front. It now opens the page in a new window instead, and
+  only ever opens pages of the panel.
+- **A user keeps at most 20 notification devices.** A browser that keeps changing its push address
+  (cleared site data, a reinstall) no longer piles up dead entries. The oldest go first.
+- **No more log line for every history event.** The push bridge's position was logged at info as a
+  panel setting change each time something happened. It is now treated like the Discord bridge's
+  position and logged at debug.
+- **Screen reader labels.** Search boxes, the chat message field, the inventory search, the
+  wizard's memory and disk sliders, the Discord check-in minutes, and every field-catalog setting
+  now announce what they are.
+- **Your Devices uses the panel's icons** instead of emoji.
+- **Dependency updates.** sanitize-html 2.18 fixes three moderate advisories in how user-supplied
+  HTML is cleaned, and the other dependencies move to their latest compatible versions.
+- **Install App gives the right steps for your browser.** The dialog is now titled Install Oxyx
+  and names the app, and shows the real menu path for Safari, Chrome and Edge on iPhone and iPad,
+  Chrome, Edge, Samsung Internet and Firefox on Android, Safari on a Mac (Add to Dock), and Chrome
+  or Edge on a computer. Desktop Firefox is pointed to Chrome or Edge, since it usually cannot
+  install sites. The Mobile App page switches to Installed App as soon as the install finishes.
+- **One place to turn notifications on.** The old Notify Me When Tasks Finish item is gone from
+  the account menu. Turning notifications on from the Mobile App page now covers both push alerts
+  and the notice when a task you started finishes. The menu link is renamed to Mobile App, matching
+  the sidebar.
+- **Phone screenshots in the docs** are now made by `pnpm run docs:screenshots` at iPhone size, so
+  all 21 in `docs/images/mobile` show the current branding and layout.
+- **Consistent wording across the panel and docs.** Schedule task names, settings change rows and
+  other short labels now use Title Case, startup phase lines end in an ellipsis while they are in
+  progress, spelling is US English throughout, and leftover references to the old name are gone
+  from user-facing text and docs. Screenshots were retaken to match.
+- **Keyboard and screen reader basics.** Every page now starts with a Skip to Content link that
+  jumps past the sidebar and top bar. Every table header declares which cells it labels, and text
+  fields show the same focus outline as buttons instead of only a faint border change.
+- **Large uploads no longer stop after five minutes.** Node ends any request that runs longer than
+  300 seconds, which cut off uploads over roughly 750 MB on a 20 Mbps connection. Uploads are now
+  limited only by their size caps and the disk quota.
+- **The panel shuts down cleanly.** On `SIGTERM` or `SIGINT` (such as `docker stop`) it stops taking
+  new connections, closes live console views, lets running requests finish for up to eight seconds,
+  and closes the database with its write-ahead log folded back in. Before, Docker waited out its
+  timeout and killed it. The compose file sets a 20 second stop grace period.
+- **Database migrations are numbered without gaps and run more safely.** The migrations are now
+  numbered 001 to 033 with no holes. Installs that already applied the old numbers are recognised
+  and nothing re-runs. Each migration is checked before it commits: one that leaves a broken
+  reference is rolled back, and one written as `async` is refused. Three redundant indexes are
+  dropped, which makes event and library writes cheaper.
+- **Upgrades copy the database before changing its schema.** When a new version has database
+  migrations to apply, the panel first saves `backups/_panel/pre-migrate-v<version>-<time>.db`
+  (the newest five are kept), so a bad migration can be rolled back to the moment before it ran.
+- **One damaged database value no longer takes every page down.** A server whose stored settings,
+  tags or ports could not be read used to turn the whole panel into an error page, because the
+  sidebar reads every server. The damaged value is now treated as empty and logged once, and the
+  server's page says which settings to review and save.
+- **Blueprint uploads check free disk space first** and refuse an archive over 8 GB before it is
+  stored, like world and file uploads. A previewed upload that is never imported is deleted after
+  30 minutes instead of waiting for the nightly cleanup.
+
+### Changed
+
+- **New Oxyx logo and app icons.** A pixel-art mark (an "O" with an "x" at its core) replaces the
+  pickaxe in the sidebar, sign-in pages, browser tab, home-screen icons, notification badge and iOS
+  launch screens, and the wordmark now reads OXYX instead of "Minecraft Server Manager". The browser
+  tab on a server page and the update button now say Oxyx. Every asset is generated from one grid by
+  `pnpm run build:brand`.
+
+- **Faster page loads after the first.** Client scripts are built with content-hashed names and the
+  stylesheet link carries a content version, so browsers cache both for a year instead of
+  rechecking every file on every page. An update changes the URLs, so new code still loads at once.
+- **Headings no longer jump when the title font loads.** Press Start 2P now ships as a 30 KB WOFF2
+  (was a 118 KB TTF), is preloaded with the page, and falls back to a monospace face scaled to the
+  same size while it loads.
+- **The panel exits after an uncaught exception.** Its state is unknown after one (a half-finished
+  database transaction, a held lock), so it now logs the fault and exits for Docker or systemd to
+  restart it clean. Set `OXYX_KEEP_ALIVE_ON_FATAL=1` to keep the old log-and-continue behaviour if
+  nothing supervises the process. Unhandled promise rejections are still logged without exiting.
+
+- **The image is built for 64-bit x86 Linux only, on a minimal base.** Published images are
+  `linux/amd64`; arm64 is no longer built, and the installer says so on other machines. The runtime
+  is bare Alpine 3.24 with only the Node 24.22.3 binary, its C++ runtime and tini, both pinned by
+  digest: no npm, yarn, corepack or pnpm. tini runs as PID 1, so the compose file no longer sets
+  `init: true`. The build context is an allowlist, so nothing outside the app's inputs reaches the
+  image. Releases now carry a build SBOM.
+- **A much smaller image.** The Docker build drops data the panel never reads from its dependencies
+  (Minecraft Bedrock tables and icon fonts), cutting the bundled packages from about 530 MB to 170 MB.
+- **The compose file pins the image to a release.** `docker-compose.yml` now uses
+  `ghcr.io/doubleangels/oxyx:${OXYX_TAG:-v0.14.1}` instead of `:latest`, so an unattended pull never
+  jumps a version. Set `OXYX_TAG` to upgrade. The runtime image no longer contains pnpm.
+
+### Security
+
+- **Dependency updates for published advisories:** Handlebars 4.7.10 (two critical template-compile
+  injection issues), body-parser 2.4, multer 2.5, zod 4.6.7 and source-map-js 1.2.2 (denial of
+  service).
+- **Optional Docker socket proxy.** `deploy/docker-compose.socket-proxy.yml` runs the panel without
+  the raw Docker socket: a proxy sidecar passes on only containers, exec, images, networks, events
+  and the version and info probes.
+- **Blueprint import only reads files from its own archive.** An overlay file name or config file
+  path in a blueprint manifest must now be a plain name or a relative path inside the server folder.
+  A blueprint that names anything else is refused before a server is created, and symlinks inside
+  the archive are never followed.
+- **A world save name must be a plain folder name.** World Save Name (and `level-name` in
+  `server.properties`) can no longer contain slashes or start with a dot. Saving such a name is
+  refused, and world, inventory, stats and blueprint actions on a server that already has one stop
+  with a message that says how to fix it, instead of acting on a folder outside that server.
+- **The live map runs in a sandbox.** BlueMap's web files live in the server's data folder, so
+  anyone who could edit them could run script with the rights of whoever opened the Map tab. The
+  map is now served under a signed link that expires after six hours, inside a sandboxed frame with
+  no access to the panel's sign-in. The old `/map/<server>/` address no longer works. Reopen the Map
+  tab to get a fresh link.
+- **Blueprints need the files permission to read.** Downloading, previewing, importing or deleting a
+  saved blueprint now needs the files permission on the server it came from, the same as exporting
+  it. A blueprint that is not tied to a server is admin-only. New exports leave `rcon.password`
+  blank in `server.properties`. Blueprints exported before this release still contain it.
+- **RCON and BlueMap ports are no longer published to the network.** Docker published them on every
+  interface, past host firewalls such as ufw. They are now bound to `127.0.0.1` (or the Docker
+  host-gateway address when the panel runs in a container); the panel never needed them from
+  outside. Set `INTERNAL_PORT_BIND=all` to keep the old behaviour. Existing servers are marked for a
+  rebuild, which happens on their next start. Server containers also run with
+  `no-new-privileges` and a process limit (`CONTAINER_PIDS_LIMIT`, default 4096).
+- **World archives in tar format no longer extract links.** Symbolic links and hard links inside an
+  uploaded `.tar` or `.tar.gz` world are skipped. Only regular files and folders are written.
+- **First-run setup only answers to known host names.** Until the admin account exists, the panel
+  refuses requests for any host name other than `localhost`, an IP address, or a name listed in the
+  new `PANEL_ALLOWED_HOSTS`. This stops a web page from claiming setup through DNS rebinding. If you
+  set up a fresh panel through a reverse proxy, add its name to `PANEL_ALLOWED_HOSTS` first. Set the
+  variable to enforce the list after setup too.
+- **Outbound requests refuse the whole IPv6 link-local range.** The check matched only addresses
+  starting with `fe80`, not the rest of `fe80::/10`. Deprecated site-local addresses (`fec0::/10`)
+  are refused too.
+- **Public status pages are rate limited.** `/status/<slug>` now has a per-IP ceiling
+  (`RATE_LIMIT_STATUS_PER_MIN`, default 120) and may be cached for five seconds.
+
 ## [0.14.1] - 2026-09-21
 
 Minecraft version updates now have to be earned: a newer version is only offered when every mod on

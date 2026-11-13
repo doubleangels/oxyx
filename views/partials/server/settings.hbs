@@ -215,7 +215,7 @@
     </section>
     {{/if}}
 
-    {{! Admin-only: same gate as the wizard's Advanced Docker settings - the
+    {{! Admin-only: same gate as the wizard's Advanced Docker Settings - the
         API 403s these fields for other roles. }}
     {{#if (eq user.role 'admin')}}
     <section class="card scroll-mt-32 p-4" id="sec-docker">
@@ -294,4 +294,4 @@
   </div>
 </div>
 
-<script type="module" src="/js/pages/server-settings.js"></script>
+<script type="module" src="{{asset '/js/pages/server-settings.js'}}"></script>

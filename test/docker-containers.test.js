@@ -65,8 +65,8 @@ test('containerName and containerRef: the stored id wins, then the stored name, 
   );
   assert.equal(containers.containerRef('srv_cn1'), 'abc123');
   assert.equal(containers.containerRef('srv_cn2'), 'named');
-  assert.equal(containers.containerRef('srv_unknown'), 'msm-srv_unknown');
-  assert.equal(containers.containerName('srv_x'), 'msm-srv_x');
+  assert.equal(containers.containerRef('srv_unknown'), 'oxyx-srv_unknown');
+  assert.equal(containers.containerName('srv_x'), 'oxyx-srv_x');
 });
 
 test('createContainer builds the full spec: ports, limits, labels, healthcheck, binds', async () => {
@@ -76,7 +76,10 @@ test('createContainer builds the full spec: ports, limits, labels, healthcheck, 
     env: { EULA: 'TRUE', MEMORY: '2G' },
     dataDir: require('../src/storage/pathGuard').dataPath('servers', 'srv_spec'),
     ports: { game: 25570, rcon: 26570, bedrock: 19140 },
-    extraPorts: [{ container: '8100/tcp', host: 8123 }],
+    extraPorts: [
+      { container: '8100/tcp', host: 8123, internal: true },
+      { container: '24454/udp', host: 24454 },
+    ],
     resources: { memoryMb: 2048, swapMb: 512, cpus: 1.5 },
     extraBinds: [
       { hostPath: '/srv/a', containerPath: '/a', mode: 'ro' },
@@ -85,15 +88,21 @@ test('createContainer builds the full spec: ports, limits, labels, healthcheck, 
   });
   assert.equal(id, 'new-id');
   const spec = created[0];
-  assert.equal(spec.name, 'msm-srv_spec');
+  assert.equal(spec.name, 'oxyx-srv_spec');
   assert.equal(spec.Image, 'itzg/minecraft-server:java21');
   assert.deepEqual(spec.Env, ['EULA=TRUE', 'MEMORY=2G']);
   assert.deepEqual(spec.Labels, { 'msm.id': 'srv_spec', 'msm.managed': 'true' });
   assert.deepEqual(spec.HostConfig.PortBindings['25565/tcp'], [{ HostPort: '25570' }]);
   assert.deepEqual(spec.HostConfig.PortBindings['25565/udp'], [{ HostPort: '25570' }], 'query shares the game port');
-  assert.deepEqual(spec.HostConfig.PortBindings['25575/tcp'], [{ HostPort: '26570' }]);
+  // RCON and BlueMap stay on the internal address (loopback for a host-run
+  // panel); the game, Bedrock and admin-added extras are public (F-02).
+  assert.deepEqual(spec.HostConfig.PortBindings['25575/tcp'], [{ HostIp: '127.0.0.1', HostPort: '26570' }]);
+  assert.deepEqual(spec.HostConfig.PortBindings['8100/tcp'], [{ HostIp: '127.0.0.1', HostPort: '8123' }]);
   assert.deepEqual(spec.HostConfig.PortBindings['19132/udp'], [{ HostPort: '19140' }]);
-  assert.deepEqual(spec.HostConfig.PortBindings['8100/tcp'], [{ HostPort: '8123' }]);
+  assert.deepEqual(spec.HostConfig.PortBindings['24454/udp'], [{ HostPort: '24454' }]);
+  assert.ok(!('HostIp' in spec.HostConfig.PortBindings['25565/tcp'][0]), 'the game port is public');
+  assert.deepEqual(spec.HostConfig.SecurityOpt, ['no-new-privileges:true']);
+  assert.equal(spec.HostConfig.PidsLimit, 4096);
   assert.ok('8100/tcp' in spec.ExposedPorts && '19132/udp' in spec.ExposedPorts);
   assert.equal(spec.HostConfig.Memory, 2048 * 1024 * 1024);
   assert.equal(spec.HostConfig.MemorySwap, 2560 * 1024 * 1024, 'swap is memory + swap');
@@ -106,6 +115,43 @@ test('createContainer builds the full spec: ports, limits, labels, healthcheck, 
   assert.equal(spec.Healthcheck.StartPeriod, 2 * 3600 * 1e9);
   assert.equal(spec.Tty, false);
   assert.equal('NetworkMode' in spec.HostConfig, false);
+});
+
+test('internal bind address: INTERNAL_PORT_BIND overrides, "all" restores every interface, a container panel resolves the gateway', async () => {
+  const config = require('../src/config');
+  const { resolveInternalBindIp } = require('../src/docker/internalBind');
+  const saved = { bind: config.internalPortBind, host: config.mapProxyHost };
+  try {
+    config.internalPortBind = '10.1.2.3';
+    assert.equal(await resolveInternalBindIp(), '10.1.2.3');
+    config.internalPortBind = 'all';
+    assert.equal(await resolveInternalBindIp(), '');
+    config.internalPortBind = '';
+    config.mapProxyHost = 'localhost';
+    assert.equal(await resolveInternalBindIp(), '127.0.0.1');
+    config.mapProxyHost = '172.17.0.1';
+    assert.equal(await resolveInternalBindIp(), '172.17.0.1');
+    config.mapProxyHost = 'no-such-host.invalid';
+    assert.equal(
+      await resolveInternalBindIp(),
+      '127.0.0.1',
+      'an unresolvable gateway falls back to loopback, never all'
+    );
+
+    config.internalPortBind = 'all';
+    await containers.createContainer({
+      serverId: 'srv_all',
+      image: 'img',
+      env: {},
+      dataDir: require('../src/storage/pathGuard').dataPath('servers', 'srv_all'),
+      ports: { game: 25572, rcon: 26572 },
+      resources: { memoryMb: 1024 },
+    });
+    assert.deepEqual(created[0].HostConfig.PortBindings['25575/tcp'], [{ HostPort: '26572' }]);
+  } finally {
+    config.internalPortBind = saved.bind;
+    config.mapProxyHost = saved.host;
+  }
 });
 
 test('createContainer omits optional ports and limits, and honours a custom container name', async () => {

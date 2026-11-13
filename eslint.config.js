@@ -49,6 +49,18 @@ module.exports = [
     },
   },
   {
+    // The service worker: a classic script with the worker's own globals.
+    files: ['public/sw.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.serviceworker },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
     // Browser client code (ES modules).
     files: ['public/js/**/*.js'],
     languageOptions: {
@@ -61,6 +73,126 @@ module.exports = [
       'no-empty': ['error', { allowEmptyCatch: true }],
       // Intentional: ANSI/control-char handling in console + MOTD rendering.
       'no-control-regex': 'off',
+      // API calls go through public/js/lib/api.js (JSON, timeout, sign-in
+      // redirect, friendly errors). See the grandfathered list below.
+      // Markup built from a plain template literal relies on every call site
+      // remembering escapeHtml. Use the auto-escaping html`` tag from
+      // public/js/lib/format.js instead.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'AssignmentExpression[left.property.name=/^(innerHTML|outerHTML)$/] > TemplateLiteral.right',
+          message: 'Build markup with the html`` tag from public/js/lib/format.js, which escapes every value.',
+        },
+        {
+          selector: "CallExpression[callee.property.name='insertAdjacentHTML'] > TemplateLiteral.arguments",
+          message: 'Build markup with the html`` tag from public/js/lib/format.js, which escapes every value.',
+        },
+      ],
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'fetch',
+          message:
+            "Call the panel's API through api() from public/js/lib/api.js, which adds a timeout and friendly errors.",
+        },
+      ],
+    },
+  },
+  {
+    // Files that still call fetch() directly from before lib/api.js existed.
+    // Migrate them page by page and remove each from this list; never add one.
+    // Long uploads/downloads with progress may stay here on purpose.
+    files: [
+      'public/js/app.js',
+      'public/js/lib/avatar.js',
+      'public/js/lib/backupEdit.js',
+      'public/js/lib/dockerSettings.js',
+      'public/js/lib/itemBrowser.js',
+      'public/js/lib/progress.js',
+      'public/js/lib/retention.js',
+      'public/js/lib/taskTray.js',
+      'public/js/lib/twoFactor.js',
+      'public/js/lib/undo.js',
+      'public/js/lib/zipImport.js',
+      'public/js/pages/activity.js',
+      'public/js/pages/analytics.js',
+      'public/js/pages/backups.js',
+      'public/js/pages/blueprints.js',
+      'public/js/pages/chat.js',
+      'public/js/pages/commands.js',
+      'public/js/pages/console.js',
+      'public/js/pages/dashboard.js',
+      'public/js/pages/files.js',
+      'public/js/pages/health.js',
+      'public/js/pages/history.js',
+      'public/js/pages/integrations.js',
+      'public/js/pages/inventory.js',
+      'public/js/pages/investigation.js',
+      'public/js/pages/modpacks.js',
+      'public/js/pages/mods.js',
+      'public/js/pages/permissions.js',
+      'public/js/pages/player-detail.js',
+      'public/js/pages/players.js',
+      'public/js/pages/schedules.js',
+      'public/js/pages/server-backups.js',
+      'public/js/pages/server-settings.js',
+      'public/js/pages/server-updates.js',
+      'public/js/pages/settings.js',
+      'public/js/pages/setup.js',
+      'public/js/pages/storage.js',
+      'public/js/pages/updates.js',
+      'public/js/pages/wizard.js',
+      'public/js/pages/world-controls.js',
+      'public/js/pages/worlds-tab.js',
+      'public/js/pages/worlds.js',
+    ],
+    rules: {
+      'no-restricted-globals': 'off',
+    },
+  },
+  {
+    // Files that still assign plain template literals to innerHTML, each
+    // escaping values by hand. Migrate them to html`` and remove each from this
+    // list; never add one.
+    files: [
+      'public/js/app.js',
+      'public/js/lib/avatar.js',
+      'public/js/lib/backupEdit.js',
+      'public/js/lib/confirm.js',
+      'public/js/lib/dockerSettings.js',
+      'public/js/lib/itemBrowser.js',
+      'public/js/lib/modal.js',
+      'public/js/lib/progress.js',
+      'public/js/lib/select.js',
+      'public/js/lib/taskTray.js',
+      'public/js/lib/toast.js',
+      'public/js/lib/twoFactor.js',
+      'public/js/lib/zipImport.js',
+      'public/js/pages/analytics.js',
+      'public/js/pages/blueprints.js',
+      'public/js/pages/commands.js',
+      'public/js/pages/console.js',
+      'public/js/pages/dashboard.js',
+      'public/js/pages/files.js',
+      'public/js/pages/inventory.js',
+      'public/js/pages/investigation.js',
+      'public/js/pages/modpacks.js',
+      'public/js/pages/mods.js',
+      'public/js/pages/permissions.js',
+      'public/js/pages/player-detail.js',
+      'public/js/pages/players.js',
+      'public/js/pages/schedules.js',
+      'public/js/pages/server-settings.js',
+      'public/js/pages/settings.js',
+      'public/js/pages/setup.js',
+      'public/js/pages/storage.js',
+      'public/js/pages/wizard.js',
+      'public/js/pages/worlds-tab.js',
+      'public/js/pages/worlds.js',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 ];

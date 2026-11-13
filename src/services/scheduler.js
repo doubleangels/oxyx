@@ -20,21 +20,21 @@ const jobs = new Map(); // schedule id -> Cron
 // `capability` is the per-server permission a server-scoped task needs
 // (services/permissions.js); panel-global tasks follow the global role.
 const TASK_TYPES = {
-  restart: { label: 'Restart server', serverScoped: true, capability: 'power' },
+  restart: { label: 'Restart Server', serverScoped: true, capability: 'power' },
   backup: { label: 'Backup', serverScoped: true, capability: 'backups' },
-  stop: { label: 'Stop server', serverScoped: true, capability: 'power' },
-  start: { label: 'Start server', serverScoped: true, capability: 'power' },
-  rcon: { label: 'Run command', serverScoped: true, capability: 'console' },
+  stop: { label: 'Stop Server', serverScoped: true, capability: 'power' },
+  start: { label: 'Start Server', serverScoped: true, capability: 'power' },
+  rcon: { label: 'Run Command', serverScoped: true, capability: 'console' },
   // Fleet tasks: act on every server, so they are admin-only (a per-server
   // grant cannot cover "all"). Each server is handled on its own - one failure
   // does not stop the rest - and any failure fails the run at the end.
-  'backup-all': { label: 'Back up all servers', serverScoped: false, adminOnly: true },
-  'restart-all': { label: 'Restart all running servers', serverScoped: false, adminOnly: true },
-  'update-check': { label: 'Update check', serverScoped: false },
-  'storage-scan': { label: 'Storage re-scan', serverScoped: false },
-  'tmp-clean': { label: 'Clear temporary files', serverScoped: false },
-  'ban-expiry-sweep': { label: 'Ban expiry sweep', serverScoped: false },
-  'content-meta-backfill': { label: 'Content metadata backfill', serverScoped: false },
+  'backup-all': { label: 'Back Up All Servers', serverScoped: false, adminOnly: true },
+  'restart-all': { label: 'Restart All Running Servers', serverScoped: false, adminOnly: true },
+  'update-check': { label: 'Update Check', serverScoped: false },
+  'storage-scan': { label: 'Storage Re-Scan', serverScoped: false },
+  'tmp-clean': { label: 'Clear Temporary Files', serverScoped: false },
+  'ban-expiry-sweep': { label: 'Ban Expiry Sweep', serverScoped: false },
+  'content-meta-backfill': { label: 'Content Metadata Backfill', serverScoped: false },
 };
 
 // A scheduled backup or start refused only because another action holds its
@@ -212,6 +212,10 @@ async function restartRunningServers({ actor, task, warnSeconds = 0 }) {
   await forEachServer('Restarting', still, (server) => servers.restartServer(server.id, { actor }), task);
 }
 
+/**
+ * @param {any} schedule
+ * @param {any} [task]
+ */
 async function runTask(schedule, task = null) {
   const payload = JSON.parse(schedule.payload_json || '{}');
   const actor = 'scheduler';
@@ -402,6 +406,10 @@ function seedGlobalDefaults() {
   }
 }
 
+/**
+ * @param {{ serverId?: string | null, taskType: string, cron: string, payload?: object, enabled?: boolean }} schedule
+ * @param {{ actor?: string }} [opts]
+ */
 function createSchedule({ serverId = null, taskType, cron, payload = {}, enabled = true }, { actor = 'system' } = {}) {
   if (!TASK_TYPES[taskType]) throw httpError(400, `Unknown task type ${taskType}.`);
   try {
@@ -470,7 +478,9 @@ function listSchedules() {
       serverNames.set(r.id, r.display_name);
   }
   return rows.map((s) => {
+    /** @type {string | null} */
     let next = null;
+    /** @type {number | null} */
     let nextMs = null;
     try {
       const nextRun = new Cron(s.cron, { timezone: getTimezone() }).nextRun();

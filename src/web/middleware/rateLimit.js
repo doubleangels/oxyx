@@ -96,4 +96,21 @@ const publicApiTokenLimiter = config.rateLimit.publicApiPerMin
     })
   : passthrough;
 
-module.exports = { apiLimiter, authLimiter, publicApiIpLimiter, publicApiTokenLimiter };
+/**
+ * Per-IP ceiling on the public, unauthenticated status pages. Each hit parses
+ * every status-page integration row and renders a view, so an anonymous flood
+ * is capped like the public API is. Plain text, not JSON: a browser reads it.
+ */
+const statusLimiter = config.rateLimit.statusPerMin
+  ? rateLimit({
+      windowMs: 60_000,
+      limit: config.rateLimit.statusPerMin,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      validate,
+      keyGenerator: (req) => 'ip:' + ipKeyGenerator(req.ip),
+      handler: (req, res) => res.status(429).type('text/plain').send('Too many requests. Try again in a minute.'),
+    })
+  : passthrough;
+
+module.exports = { apiLimiter, authLimiter, publicApiIpLimiter, publicApiTokenLimiter, statusLimiter };

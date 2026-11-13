@@ -1,4 +1,9 @@
-# Oxyx
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/oxyx-logo-dark.svg">
+    <img src="docs/brand/oxyx-logo-light.svg" alt="Oxyx" width="300">
+  </picture>
+</h1>
 
 <p align="center">
   <img src="docs/screenshots/01-dashboard.png" alt="Dashboard with all Minecraft servers at a glance" width="920">
@@ -7,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/doubleangels/oxyx/releases/latest"><img src="https://img.shields.io/github/v/release/doubleangels/oxyx?logo=github" alt="GitHub release"></a>
   <a href="https://github.com/doubleangels/oxyx/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/doubleangels/oxyx/ci.yml?logo=github&label=ci" alt="CI"></a>
-  <a href="https://github.com/doubleangels/oxyx/pkgs/container/oxyx"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
+  <a href="https://github.com/doubleangels/oxyx/pkgs/container/oxyx"><img src="https://img.shields.io/badge/ghcr.io-linux%2Famd64-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=nodedotjs&logoColor=white" alt="Node 24+">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/doubleangels/oxyx" alt="MIT license"></a>
 </p>
@@ -67,8 +72,12 @@ by host path).
 
 ### 🐳 Option 1: Docker (Linux hosts, Portainer, Dockge, compose)
 
-A pre-built multi-arch image (amd64 + arm64) is published to GHCR on every release:
+A pre-built image for 64-bit x86 Linux (`linux/amd64`) is published to GHCR on every release:
 `ghcr.io/doubleangels/oxyx:latest` (or pin a version tag, e.g. `:v0.14.1`).
+The shipped `docker-compose.yml` pins the current release; set `OXYX_TAG` to upgrade (or to `latest`
+to follow every release). To keep the raw Docker socket out of the panel container, use
+`deploy/docker-compose.socket-proxy.yml`, which puts a socket proxy in front of the daemon that only
+passes the API sections the panel needs.
 
 On a fresh Linux server, the installer does the whole thing: installs Docker if it's missing, writes
 `/opt/oxyx`, starts the panel, and waits until it answers.
@@ -229,7 +238,7 @@ that are fiddly elsewhere are first-class here:
 - **vs [Crafty Controller](https://craftycontrol.com/)**: same free, self-hosted spirit, but every
   server is a clean, resource-capped **Docker container** rather than a bare process, with per-server
   disk quotas, a one-click live map, and portable `.mcserver.zip` blueprints.
-- **vs [AMP](https://cubecoders.com/AMP)**: no per-machine licence and no paid tiers. **MIT-licensed
+- **vs [AMP](https://cubecoders.com/AMP)**: no per-machine license and no paid tiers. **MIT-licensed
   and free**, with the itzg image's entire environment-variable surface exposed and explained in plain
   English.
 
@@ -288,7 +297,7 @@ Not affiliated with any of them.
   direct JSON edits while stopped ("applies on start"). Teleport by coordinates, to a player, or to
   the nearest biome.
 - **Backups & schedules**: save-safe archive/restore with free-space preflight and retention per
-  backup reason, plus optional age and total-size limits. Admins set them panel-wide in **Settings →
+  backup reason, plus optional age and total-size limits. Admins set them panel-wide in **Panel Settings →
   Backup Retention** and per server under **Retention for This Server** on its Backups tab; saving
   shows what would be removed and offers **Remove Now** or **From Next Backup**. Every new server is
   seeded a daily backup automatically, each archive is integrity-checked before it's recorded, and the
@@ -463,11 +472,17 @@ Exposing the raw panel port on the internet means logins travel over **plain HTT
 | `DATA_DIR`                                                                               | `./data`                   | Root for **all** panel state (DB, server data, backups, library).                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `DATA_DIR_HOST`                                                                          | = `DATA_DIR`               | Only when the panel runs **in a container**: the absolute host path of the `DATA_DIR` mount, used to re-root bind mounts for the host daemon.                                                                                                                                                                                                                                                                                                                                                                                      |
 | `MAP_PROXY_HOST`                                                                         | see note                   | Address the panel uses to reach sibling containers' host-published ports (currently just the live map). `127.0.0.1` bare metal; auto-switches to `host.docker.internal` when `DATA_DIR_HOST` is set (containerized panel, needs `extra_hosts`, see above). Override for rootless Docker/remote daemons.                                                                                                                                                                                                                            |
+| `INTERNAL_PORT_BIND`                                                                     | auto                       | Host address each server's RCON and BlueMap ports are published on. Auto is `127.0.0.1` bare metal, or the host-gateway address `MAP_PROXY_HOST` resolves to in a container. `all` publishes them on every interface (reachable from the LAN). Existing servers pick it up on their next rebuild.                                                                                                                                                                                                                                  |
+| `CONTAINER_PIDS_LIMIT`                                                                   | `4096`                     | Process/thread ceiling per server container. `0` turns it off.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `PUSH_CONTACT`                                                                           | project page               | Contact (`mailto:` or `https:`) the panel gives push services with each Web Push notification.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `PANEL_HOST` / `PANEL_PORT`                                                              | `127.0.0.1` / `25564`      | Web UI bind address + port. Localhost-only by default; set `PANEL_HOST=0.0.0.0` for LAN access.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `PANEL_ALLOWED_HOSTS`                                                                    | -                          | Comma-separated host names the panel answers to (e.g. `panel.example.com`). IP addresses and `localhost` always work. Until the admin account exists any other name gets a 421, which stops DNS-rebinding pages from claiming first-run setup. Once set it is enforced on every request; `*` turns the check off.                                                                                                                                                                                                                  |
 | `SESSION_SECRET`                                                                         | auto-generated             | Signs session cookies. Auto-created and persisted at `$DATA_DIR/.session-secret` if unset. At-rest encryption uses a **separate** auto-generated `$DATA_DIR/.secret-key`, so rotating this no longer invalidates stored secrets.                                                                                                                                                                                                                                                                                                   |
 | `TRUST_PROXY` / `COOKIE_SECURE` / `COOKIE_SAMESITE`                                      | - / - / `lax`              | Set when behind a TLS-terminating reverse proxy. `TRUST_PROXY` (hop count, `loopback`, or IP/CIDR list; a bare `true` is deprecated and treated as `1` with a boot warning, because it trusts a spoofable `X-Forwarded-For`) is required for `req.ip` to see the real client, which the rate limiters key on. `COOKIE_SECURE` is `true`/`false`/`auto` (`auto` only works together with `TRUST_PROXY`; the panel warns at boot when it is set alone). `COOKIE_SAMESITE` is `lax`/`strict`/`none`; `none` requires `COOKIE_SECURE`. |
 | `RATE_LIMIT_API_PER_MIN` / `RATE_LIMIT_AUTH_PER_15MIN` / `RATE_LIMIT_PUBLIC_API_PER_MIN` | `1200` / `100` / `120`     | Per-client-IP request ceilings: all of `/api`, login / 2FA / setup POSTs, and per-token requests to the public `/api/v1`. `0` disables that limiter. A volume backstop on top of the per-account login lockout.                                                                                                                                                                                                                                                                                                                    |
-| `OXYX_EXIT_ON_FATAL` / `MSM_EXIT_ON_FATAL`                                               | -                          | `1`/`true`/`yes` makes the post-boot runtime guard hard-exit on an uncaught exception/rejection instead of logging and staying up, for supervised deployments (`systemd`, Docker `restart:`).                                                                                                                                                                                                                                                                                                                                      |
+| `RATE_LIMIT_STATUS_PER_MIN`                                                              | `120`                      | Per-client-IP ceiling on the public `/status/<slug>` pages. `0` disables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `OXYX_KEEP_ALIVE_ON_FATAL` / `MSM_KEEP_ALIVE_ON_FATAL`                                   | -                          | By default the post-boot runtime guard logs an uncaught exception and exits, so a supervisor (`systemd`, Docker `restart:`) restarts the panel clean. `1`/`true`/`yes` keeps it running instead. Use only without a supervisor.                                                                                                                                                                                                                                                                                                    |
+| `OXYX_EXIT_ON_FATAL` / `MSM_EXIT_ON_FATAL`                                               | -                          | `1`/`true`/`yes` also exits on an unhandled promise rejection, which is otherwise logged while the panel stays up.                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `DOCKER_HOST`                                                                            | auto-detected              | Docker endpoint override for rootless Docker, Podman, or a remote daemon (per-OS socket/pipe otherwise).                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `CF_API_KEY`                                                                             | -                          | Optional [CurseForge API key](https://console.curseforge.com/) to seed on first run (also settable in the UI). Wrap in single quotes; CF keys often contain `$`.                                                                                                                                                                                                                                                                                                                                                                   |
 | `GITHUB_TOKEN`                                                                           | -                          | Optional GitHub token to raise the unauthenticated API quota for the GitHub Releases content source (ETag caching keeps usage minimal either way).                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -536,7 +551,7 @@ for three minutes after "Done" (each figure moved by under 50 MB in that time):
 
 Turning off pre-touch only delays the fill: Java still works through the whole heap over time and
 never hands it back (a Forge 1.20.1 server with a 4 GB heap and no preset read 3.7 GB after a week
-with nobody on). A smaller **Initial heap** (Resources card on Settings → Configuration) is the setting that changes what Java asks for, so that
+with nobody on). A smaller **Initial Heap** (Resources card on Settings → Configuration) is the setting that changes what Java asks for, so that
 is the lever if you want idle memory to follow real use; the trade-off is that Aikar's flags
 recommend equal heaps for the steadiest tick times. Java also needs memory outside the heap: about
 0.5 GB on vanilla, 1.5-2 GB on a large modpack, which is what the headroom above is for.
@@ -673,7 +688,7 @@ The core lifecycle is solid, but several features have known limitations or are 
   roof, or an exposed cliff. It's **online-only**, runs **one search at a time per server** (a
   `/locate`/`spreadplayers` sweep briefly stalls the server's main thread), seeds distance from the
   player's **last-saved** position (can be stale), and its point distribution clusters toward the
-  centre rather than being area-uniform.
+  center rather than being area-uniform.
 
 - **Structure finding**: nearest-structure teleport uses a bundled vanilla list plus a best-effort
   scan of the server's structure tags for modded content. Each structure's home dimension is a static

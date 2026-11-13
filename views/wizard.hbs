@@ -274,7 +274,7 @@
   <div class="card mt-4 p-5" id="wz-card-resources">
     <h3 class="mb-4 font-semibold">Resources</h3>
     <div>
-      <label class="label">RAM (Java Heap)</label>
+      <label class="label" for="wz-ram">RAM (Java Heap)</label>
       <div class="flex items-center gap-3">
         <input type="range" min="1024" max="16384" step="512" value="{{defaults.heapMb}}" class="msm-range flex-1" id="wz-ram" data-out="wz-ram-out" data-unit=" MB">
         <span class="w-24 text-right font-mono text-sm" id="wz-ram-out">{{defaults.heapMb}} MB</span>
@@ -282,7 +282,7 @@
       <p class="help">The container's memory limit is set automatically, 50% above the heap.</p>
     </div>
     <div class="mt-4">
-      <label class="label">Disk Quota</label>
+      <label class="label" for="wz-quota">Disk Quota</label>
       <div class="flex items-center gap-3">
         <input type="range" min="0" max="200" step="5" value="{{defaults.diskQuotaGb}}" class="msm-range flex-1" id="wz-quota" data-out="wz-quota-out" data-unit=" GB" data-zero="off">
         <span class="w-24 text-right font-mono text-sm" id="wz-quota-out">{{defaults.diskQuotaGb}} GB</span>
@@ -377,4 +377,4 @@
     <button class="btn btn-primary flex-[2] sm:ml-auto sm:flex-none" id="wz-create" type="button">{{{icon 'pickaxe' 'size-4'}}} Create &amp; Start</button>
   </div>
 </div>
-<script type="module" src="/js/pages/wizard.js"></script>
+<script type="module" src="{{asset '/js/pages/wizard.js'}}"></script>

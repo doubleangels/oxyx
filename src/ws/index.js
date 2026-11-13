@@ -38,6 +38,12 @@ function attachWebSockets(httpServer) {
     // Origin on a WS handshake, so a mismatch is a cross-site attempt - reject
     // it. A missing Origin is a non-browser client (scripts, tests), which the
     // signed session cookie still gates below.
+    if (!require('../web/middleware/hostGuard').hostAllowed(req)) {
+      logger.warn('Rejected a WebSocket upgrade for an unknown host name.', { path: req.url.split('?')[0] });
+      socket.write('HTTP/1.1 421 Misdirected Request\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     if (!originAllowed(req)) {
       logger.warn('Rejected a cross-origin WebSocket upgrade.', { path: req.url.split('?')[0] });
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
@@ -80,6 +86,7 @@ async function handleConsole(ws, serverId, user, sid) {
   const send = (obj) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
   };
+  /** @type {(() => void) | null} */
   let unsubscribe = null;
   let closed = false;
   const cleanup = () => {
@@ -244,6 +251,7 @@ function subscribeConsole(serverId, sub) {
         // buffer is filled immediately; flush() runs before anything that must
         // not reorder against pending text (a late joiner, end, error).
         let pending = '';
+        /** @type {NodeJS.Timeout | null} */
         let flushTimer = null;
         broker.flush = () => {
           if (flushTimer) clearTimeout(flushTimer);
@@ -375,6 +383,7 @@ function subscribeStats(serverId, onSample, onError, onEnd = () => {}) {
 }
 
 async function handleStats(ws, serverId) {
+  /** @type {(() => void) | null} */
   let unsubscribe = null;
   let closed = false;
   const cleanup = () => {

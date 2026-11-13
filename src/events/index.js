@@ -10,20 +10,10 @@ const db = require('../db');
 const { dataPath } = require('../storage/pathGuard');
 const logger = require('../logger')('events');
 
-/**
- * Record an event.
- * @param {object} e
- * @param {string|null} [e.serverId]  null for panel-global events
- * @param {string} [e.actor]          username | 'system' | 'scheduler'
- * @param {string} e.type             kebab-case event type ('started', 'config-changed', …)
- * @param {string} e.summary          human-readable one-liner
- * @param {object} [e.details]        structured payload (diffs, versions, sizes…)
- * @param {string} [e.logExcerpt]     raw text to persist alongside the event
- * @returns {number} event id
- */
 // The Activity page renders a type filter built from `SELECT DISTINCT type` on
 // every load. The set of distinct types is tiny and only grows, so cache it and
 // only invalidate when recordEvent() writes a genuinely new one.
+/** @type {string[] | null} */
 let distinctTypes = null;
 function knownTypes() {
   if (!distinctTypes) {
@@ -32,8 +22,20 @@ function knownTypes() {
   return distinctTypes;
 }
 
+/**
+ * Record an event.
+ * @param {object} e
+ * @param {string|null} [e.serverId]  null for panel-global events
+ * @param {string} [e.actor]          username | 'system' | 'scheduler'
+ * @param {string} e.type             kebab-case event type ('started', 'config-changed', …)
+ * @param {string} e.summary          human-readable one-liner
+ * @param {object} [e.details]        structured payload (diffs, versions, sizes…)
+ * @param {string|null} [e.logExcerpt] raw text to persist alongside the event
+ * @returns {number} event id
+ */
 function recordEvent({ serverId = null, actor = 'system', type, summary, details = {}, logExcerpt = null }) {
   if (distinctTypes && type && !distinctTypes.includes(type)) distinctTypes = null; // a new type - rebuild on next read
+  /** @type {string | null} */
   let excerptRel = null;
   if (logExcerpt) {
     // nanoid suffix: two events of the same type in the same millisecond must

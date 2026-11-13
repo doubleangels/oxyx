@@ -26,33 +26,38 @@ const PHASES = [
   {
     key: 'pack-download',
     re: /Downloading modpack|Downloading.*server pack|install-(curseforge|modrinth)/i,
-    label: 'Downloading modpack',
+    label: 'Downloading modpack…',
   },
-  { key: 'mods-download', re: /Downloaded mod file|Downloading mods|Downloaded \d+ files/i, label: 'Downloading mods' },
+  {
+    key: 'mods-download',
+    re: /Downloaded mod file|Downloading mods|Downloaded \d+ files/i,
+    label: 'Downloading mods…',
+  },
   {
     key: 'loader-install',
     re: /Running (the )?.*(NeoForge|Forge|Fabric|Quilt).*installer|installer for Minecraft/i,
-    label: 'Installing mod loader',
+    label: 'Installing mod loader…',
   },
   {
     key: 'server-download',
     re: /Downloading (Paper|Purpur|server jar)|Downloading.*minecraft_server/i,
-    label: 'Downloading server',
+    label: 'Downloading server…',
   },
   {
     key: 'mod-loading',
     re: /Loading \d+ mods|mixin|ModLauncher|Bootstrap|Fabric Loader|FML.*load/i,
-    label: 'Loading mods',
+    label: 'Loading mods…',
   },
   {
     key: 'world-gen',
     re: /Preparing level|Preparing start region|Preparing spawn|Generating keypair/i,
-    label: 'Generating world',
+    label: 'Generating world…',
   },
-  { key: 'done', re: /Done \([\d.]+s\)/, label: 'Finishing startup' },
+  { key: 'done', re: /Done \([\d.]+s\)/, label: 'Finishing startup…' },
 ];
 
 function classifyPhase(logTail) {
+  /** @type {(typeof PHASES)[number] | null} */
   let found = null;
   for (const phase of PHASES) {
     if (phase.re.test(logTail)) found = phase; // last (deepest) match wins
@@ -60,12 +65,30 @@ function classifyPhase(logTail) {
   if (!found) return null;
   if (found.key === 'mods-download') {
     const count = (logTail.match(/Downloaded mod file/g) || []).length;
-    return { key: found.key, label: count > 1 ? `Downloading mods (${count} in the last minute)` : found.label };
+    return { key: found.key, label: count > 1 ? `Downloading mods (${count} in the last minute)…` : found.label };
   }
   return { key: found.key, label: found.label };
 }
 
-const entries = new Map(); // serverId -> {stats, players, uptimeStartedAt, stopStats, timers}
+/**
+ * @typedef {object} LiveEntry
+ * @property {any} stats
+ * @property {any} players
+ * @property {string | null} startedAt
+ * @property {boolean} upConfirmed
+ * @property {(() => void) | null} stopStats
+ * @property {NodeJS.Timeout | null} playerTimer
+ * @property {any} perf
+ * @property {string[] | false | null} perfCmd array once a probe works, false once all have been tried
+ * @property {boolean} perfSupported
+ * @property {NodeJS.Timeout | null} perfTimer
+ * @property {string | null} containerId
+ * @property {{ key: string, label: string } | null} [phase]
+ * @property {NodeJS.Timeout | null} [phaseTimer]
+ */
+/** @type {Map<string, LiveEntry>} serverId -> live entry */
+const entries = new Map();
+/** @type {NodeJS.Timeout | null} */
 let syncTimer = null;
 let syncing = false;
 
@@ -132,6 +155,7 @@ function statusDetail(live) {
 
 async function attach(serverId, containerId = null) {
   if (entries.has(serverId)) return;
+  /** @type {LiveEntry} */
   const entry = {
     stats: null,
     players: null,
@@ -259,7 +283,7 @@ async function attach(serverId, containerId = null) {
     phaseInFlight = true;
     try {
       const tail = await fetchLogs(serverId, { tail: 40 });
-      entry.phase = classifyPhase(tail) || entry.phase || { key: 'boot', label: 'Starting up' };
+      entry.phase = classifyPhase(tail) || entry.phase || { key: 'boot', label: 'Starting up…' };
     } catch {
       /* container gone - sync() will detach */
     } finally {

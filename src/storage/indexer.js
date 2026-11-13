@@ -26,6 +26,7 @@ async function statBatch(paths) {
 const MAX_CACHED_DEPTH = 3;
 
 let scanning = false;
+/** @type {NodeJS.Timeout | null} */
 let timer = null;
 // When the last scan STARTED; the interval skip uses it to avoid re-walking the
 // whole tree minutes after a mutation-driven scheduleScan() already did.
@@ -164,6 +165,7 @@ function startIndexer({ intervalMs = 15 * 60 * 1000 } = {}) {
 // short while after the LAST mutation. Trailing debounce: every call pushes the
 // timer out, so a walk never runs mid-restore. The 15-minute interval scan is
 // the backstop if mutations never stop long enough for the timer to fire.
+/** @type {NodeJS.Timeout | null} */
 let debounceTimer = null;
 let debounceDue = 0;
 let debounceSoon = false;

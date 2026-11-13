@@ -128,7 +128,7 @@ function render(body, version, unknown, unchecked) {
         'Could Not Be Identified',
         unknown,
         'warn',
-        'Neither registry recognises these files, so what they support is unknown.'
+        'Neither registry recognizes these files, so what they support is unknown.'
       )
     );
   }

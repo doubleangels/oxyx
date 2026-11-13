@@ -572,7 +572,7 @@ async function previewStandalone(zipPath) {
   const modLoaderVotes = loaderVotes.filter(([l]) => ['fabric', 'forge', 'neoforge', 'quilt'].includes(l));
   const mcVotes = tally(items.flatMap((i) => (i.identity && i.identity.mcVersions) || []));
   // A zip that embedded its own loader install (e.g. a locally-prepared FTB
-  // server) can be created WITHOUT MSM re-supplying loader versions - the
+  // server) can be created WITHOUT the panel re-supplying loader versions - the
   // already-installed build is what the container should pin to.
   const native = await detectNativeLoader(zipPath);
   return {

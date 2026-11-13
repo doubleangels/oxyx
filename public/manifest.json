@@ -5,7 +5,7 @@
   "description": "Run, watch and back up your Minecraft servers on Docker.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/",
+  "start_url": "/?launch=app",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
@@ -18,25 +18,25 @@
   "categories": ["games", "utilities", "productivity"],
   "icons": [
     {
-      "src": "/icons/pickaxe-192.png",
+      "src": "/icons/oxyx-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/pickaxe-512.png",
+      "src": "/icons/oxyx-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/pickaxe-maskable-192.png",
+      "src": "/icons/oxyx-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/pickaxe-maskable-512.png",
+      "src": "/icons/oxyx-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -54,7 +54,7 @@
       "url": "/servers",
       "icons": [
         {
-          "src": "/icons/pickaxe-192.png",
+          "src": "/icons/oxyx-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -65,7 +65,7 @@
       "url": "/health",
       "icons": [
         {
-          "src": "/icons/pickaxe-192.png",
+          "src": "/icons/oxyx-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -76,7 +76,7 @@
       "url": "/backups",
       "icons": [
         {
-          "src": "/icons/pickaxe-192.png",
+          "src": "/icons/oxyx-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -87,11 +87,20 @@
       "url": "/activity",
       "icons": [
         {
-          "src": "/icons/pickaxe-192.png",
+          "src": "/icons/oxyx-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
       ]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

@@ -8,8 +8,9 @@
 
 const httpError = require('../utils/httpError');
 const fs = require('node:fs');
+const fsp = require('node:fs/promises');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const { execCapture } = require('../docker/containers');
 const mojangProfiles = require('./mojangProfiles');
@@ -79,7 +80,7 @@ function prettyDimension(dim) {
 function readJson(serverId, file) {
   if (!FILES.has(file)) throw httpError(400, `Unsupported player file: ${file}`);
   try {
-    const raw = fs.readFileSync(dataPath('servers', serverId, file), 'utf8');
+    const raw = fs.readFileSync(serverPath(serverId, file), 'utf8');
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
@@ -90,8 +91,8 @@ function readJson(serverId, file) {
 
 function writeJson(serverId, file, data) {
   if (!FILES.has(file)) throw httpError(400, `Unsupported player file: ${file}`);
-  const target = dataPath('servers', serverId, file);
-  const tmp = dataPath('servers', serverId, `${file}.${process.pid}-${Date.now()}.tmp`);
+  const target = serverPath(serverId, file);
+  const tmp = serverPath(serverId, `${file}.${process.pid}-${Date.now()}.tmp`);
   fs.mkdirSync(dataPath('servers', serverId), { recursive: true });
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
   fs.renameSync(tmp, target);
@@ -440,6 +441,12 @@ async function setOp(serverId, name, on, level = 4, { running = false, actor = '
 // ---------------------------------------------------------------------------
 // Bans
 
+/**
+ * @param {string} serverId
+ * @param {string} name
+ * @param {string | undefined} reason
+ * @param {{ running?: boolean, actor?: string, durationMs?: number | null }} [opts]
+ */
 async function banPlayer(serverId, name, reason, { running = false, actor = 'system', durationMs = null } = {}) {
   const who = await resolveIdentity(serverId, name);
   reason = cleanText(reason, 'Banned by an operator.');
@@ -489,6 +496,12 @@ async function pardonPlayer(serverId, name, { running = false, actor = 'system' 
   return { name: who.name, uuid: who.uuid, banned: false };
 }
 
+/**
+ * @param {string} serverId
+ * @param {string} ip
+ * @param {string | undefined} reason
+ * @param {{ running?: boolean, actor?: string, durationMs?: number | null, player?: string | null }} [opts]
+ */
 async function banIp(
   serverId,
   ip,
@@ -573,6 +586,17 @@ function stripPlayerFromFile(serverId, file, who) {
  * entries and a running world keeps a live .dat in memory), so deletion is
  * blocked while the name is in the RCON online list.
  */
+/** Delete one file if it exists, without blocking the event loop. True when it was there. */
+async function removeIfPresent(file) {
+  try {
+    await fsp.rm(file);
+    return true;
+  } catch (err) {
+    if (err && err.code === 'ENOENT') return false;
+    throw err;
+  }
+}
+
 async function deletePlayer(serverId, name, { running = false, actor = 'system' } = {}) {
   const who = await resolveIdentity(serverId, name);
   if (!UUID_RE.test(who.uuid)) throw httpError(422, `Could not determine a valid uuid for ${who.name}.`);
@@ -620,26 +644,20 @@ async function deletePlayer(serverId, name, { running = false, actor = 'system' 
     const level = require('./worlds').activeLevelName(server);
     // Every path goes through the guard (never a bare path.join on a uuid that
     // came from a file the Minecraft process wrote).
-    const inWorld = (...segs) => dataPath('servers', serverId, level, ...segs);
+    const inWorld = (...segs) => serverPath(serverId, level, ...segs);
 
     // Playerdata - delete both the modern and legacy .dat (+ .dat_old backups),
     // tolerating either layout or none at all (never-joined players have none).
     for (const dir of [['players', 'data'], ['playerdata']]) {
       for (const ext of ['.dat', '.dat_old']) {
-        const file = inWorld(...dir, `${who.uuid}${ext}`);
-        if (!fs.existsSync(file)) continue;
-        fs.rmSync(file, { force: true });
-        removed.playerdata += 1;
+        if (await removeIfPresent(inWorld(...dir, `${who.uuid}${ext}`))) removed.playerdata += 1;
       }
     }
 
     // Stats + advancements are JSON files named by uuid. Report what was
     // actually there rather than "true" for a file that never existed.
     for (const kind of ['stats', 'advancements']) {
-      const file = inWorld(kind, `${who.uuid}.json`);
-      if (!fs.existsSync(file)) continue;
-      fs.rmSync(file, { force: true });
-      removed[kind] = true;
+      if (await removeIfPresent(inWorld(kind, `${who.uuid}.json`))) removed[kind] = true;
     }
   } catch {
     /* the server/world may be gone entirely - role-file cleanup above already ran */
@@ -647,7 +665,9 @@ async function deletePlayer(serverId, name, { running = false, actor = 'system' 
 
   // Inventory snapshots live under logs/, not the world dir.
   try {
-    fs.rmSync(dataPath('logs', serverId, 'inventories', who.uuid), { recursive: true, force: true });
+    // Async: a long-played account can have thousands of snapshot files, and a
+    // recursive rmSync would stall every request and live view meanwhile.
+    await fsp.rm(dataPath('logs', serverId, 'inventories', who.uuid), { recursive: true, force: true });
     removed.snapshots = true;
   } catch {
     /* no snapshots */

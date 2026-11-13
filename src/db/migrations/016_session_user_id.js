@@ -17,7 +17,11 @@ function up(db) {
   // rewritten, so its user_id would stay NULL for up to 30 days and a password/2FA
   // change could not evict a stolen pre-upgrade session - the exact case this
   // column exists for. The store persists session.userId at the JSON top level.
-  db.exec("UPDATE sessions SET user_id = json_extract(data_json, '$.userId') WHERE user_id IS NULL");
+  // json_valid first: json_extract raises on malformed JSON, and one corrupt
+  // session row must not block the upgrade (that session just stays unlinked).
+  db.exec(
+    "UPDATE sessions SET user_id = json_extract(data_json, '$.userId') WHERE user_id IS NULL AND json_valid(data_json)"
+  );
 }
 
 module.exports = { up };

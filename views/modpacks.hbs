@@ -3,7 +3,7 @@
 
 <div id="modpacks-page">
   <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2">
-    <input class="input min-w-0 max-w-md flex-1" id="packs-q" placeholder="Search modpacks, e.g. Simply Optimized, All the Mods…" autocomplete="off">
+    <input class="input min-w-0 max-w-md flex-1" id="packs-q" aria-label="Search modpacks" type="search" placeholder="Search modpacks, e.g. Simply Optimized, All the Mods…" autocomplete="off">
     <div class="seg" id="packs-platforms" role="group" aria-label="Search platform">
       <button type="button" class="seg-btn" aria-pressed="true" data-platform="modrinth">Modrinth</button>
       <button type="button" class="seg-btn" aria-pressed="false" data-platform="curseforge">CurseForge</button>
@@ -58,4 +58,4 @@
     {{/each}}
   </div>
 </div>
-<script type="module" src="/js/pages/modpacks.js"></script>
+<script type="module" src="{{asset '/js/pages/modpacks.js'}}"></script>

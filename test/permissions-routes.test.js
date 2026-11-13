@@ -24,11 +24,18 @@ const isWrite = (methods) => Object.keys(methods).some((m) => WRITE_METHODS.incl
 // Any parameter name counts: `/servers/:serverId/x` is as server-scoped as `/servers/:id/x`.
 const SERVER_ROUTE = /^\/servers\/:\w+(\/|\{|$)/;
 const ROUTES_DIR = path.join(__dirname, '..', 'src', 'web', 'routes');
-const routeSources = () =>
-  fs
+// The /api router's routes live in routes/api/*.js but all register on the one
+// router mounted at /api, so they are audited as 'api.js'.
+const routeSources = () => [
+  ...fs
     .readdirSync(ROUTES_DIR)
     .filter((f) => f.endsWith('.js'))
-    .map((f) => ({ file: f, src: fs.readFileSync(path.join(ROUTES_DIR, f), 'utf8') }));
+    .map((f) => ({ file: f, src: fs.readFileSync(path.join(ROUTES_DIR, f), 'utf8') })),
+  ...fs
+    .readdirSync(path.join(ROUTES_DIR, 'api'))
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => ({ file: 'api.js', src: fs.readFileSync(path.join(ROUTES_DIR, 'api', f), 'utf8') })),
+];
 
 // Admin-only endpoints keep their requireRole('admin') gate instead of a
 // capability. Anything added here must be admin-only by design.

@@ -215,6 +215,22 @@ function init(serverId, serverType, mcVersion, serverLoader, cfEnabled) {
     modal.body.querySelector('#mod-url').focus();
   });
 
+  // Shared from another app (Android share sheet → /share → here): open Add Mod
+  // by URL with the link filled in, then drop the parameter so a reload does not
+  // open it again.
+  {
+    const params = new URLSearchParams(location.search);
+    const shared = params.get('addUrl');
+    const addBtn = document.getElementById('mods-add-url');
+    if (shared && addBtn) {
+      params.delete('addUrl');
+      history.replaceState(null, '', location.pathname + (params.size ? `?${params}` : '') + location.hash);
+      addBtn.click();
+      const field = document.getElementById('mod-url');
+      if (field) field.value = shared.slice(0, 2000);
+    }
+  }
+
   // ---- Import zip: .mrpack / CurseForge modpack export / hand-assembled jar zip ----
   const zipInput = document.createElement('input');
   zipInput.type = 'file';

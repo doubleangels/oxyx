@@ -24,6 +24,9 @@ router.get(
     // serverVM reads only the in-memory live cache - no Docker work per
     // request, so anonymous traffic cannot exhaust the daemon.
     const vm = await serverVM(row);
+    // Live values, but a few seconds stale is fine and lets a proxy or the
+    // browser absorb a refresh storm.
+    res.set('Cache-Control', 'public, max-age=5');
     res.render('status', {
       layout: 'bare',
       title: vm.name,

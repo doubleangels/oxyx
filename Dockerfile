@@ -1,39 +1,57 @@
-# Panel image. The panel drives the HOST's Docker daemon and creates Minecraft
-# servers as SIBLING containers - run it with the Docker socket mounted and
+# syntax=docker/dockerfile:1
+#
+# Panel image, linux/amd64. The panel drives the HOST's Docker daemon and
+# creates Minecraft servers as SIBLING containers: run it with the Docker socket
+# (or a socket proxy, see deploy/docker-compose.socket-proxy.yml) and
 # DATA_DIR_HOST set to the host path of the /data mount (see docker-compose.yml).
+#
+# Two stages:
+#   build    Node + pnpm on Alpine. Installs every dependency, builds the CSS
+#            and client-JS bundles, then resolves the production dependency
+#            tree on its own and prunes data the panel never reads.
+#   runtime  Bare Alpine plus the Node binary copied from the build stage and
+#            the two shared libraries it links (libstdc++, libgcc). No npm,
+#            corepack, yarn or pnpm, no build tools, no sources the panel does
+#            not load at run time.
+#
+# Base images are pinned by version AND digest in the FROM lines, where
+# Dependabot (docker ecosystem) can propose bumps. The two must share an Alpine
+# release (3.24 here) so the copied node binary finds the musl and libstdc++ it
+# was built against; test/compose-pin.test.js enforces that.
 
-# Build stage: full install (Tailwind + esbuild live in devDependencies), then
-# `pnpm run build` compiles the CSS bundle AND the esbuild client-JS bundle
-# (public/dist/js). MSM_SKIP_POSTINSTALL=1 makes the install-time postinstall
-# hook a no-op; the bundles are built explicitly after the source copy so the
-# COPY ordering below decides exactly when Tailwind + esbuild re-run.
-FROM node:24-alpine AS build
+# ---------------------------------------------------------------------------
+FROM node:24.22.3-alpine3.24@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS build
 WORKDIR /app
 ARG PNPM_VERSION=11.25.0
-ENV MSM_SKIP_POSTINSTALL=1
-# Pin pnpm directly instead of corepack (deprecated, being removed from Node):
-# exact packageManager version, no shim, no second download.
+# The install-time postinstall hook (a CSS build) is skipped; `pnpm run build`
+# below builds CSS and JS explicitly, after the sources are copied.
+ENV OXYX_SKIP_POSTINSTALL=1
+# Pin pnpm directly instead of corepack (deprecated, being removed from Node).
 RUN npm install -g pnpm@${PNPM_VERSION}
-# Dependency layers key on the lockfile alone. `pnpm fetch` populates the store
-# from pnpm-lock.yaml without reading package.json, so a version bump or a
-# package.json script/field edit that doesn't move the lockfile re-fetches
-# nothing. The runtime stage shares this cache-mounted store id, so its --prod
-# install reuses these downloads.
+
+# Dependency layers key on the lockfile alone: `pnpm fetch` fills the store from
+# pnpm-lock.yaml without reading package.json, so a script or version edit that
+# leaves the lockfile alone re-downloads nothing.
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm fetch
 COPY package.json ./
-# Only postinstall.js has to exist for `pnpm install` to run its (here no-op)
-# lifecycle hook - copying all of scripts/ would tie this layer to every seed
-# and QA script.
 COPY scripts/postinstall.js ./scripts/postinstall.js
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --offline
-# Style + client-JS build inputs. assets/css/input.css pins its Tailwind sources
-# with source(none), so the scan set is exactly src/ + views/ + public/js - all
-# copied here. src/ is in that set on purpose (status/quota colour literals in
-# src/web/app.js), so a src change DOES re-run this layer; that's correct, not a
-# cache miss to design around. build-js.js is the only script the build reads.
+
+# Production dependencies, resolved on their own from the same store (offline)
+# and pruned, before the sources arrive: a source edit does not redo this. The
+# cache mount is a separate filesystem, so pnpm copies rather than hard-links
+# and /prod/node_modules is self-contained.
+COPY scripts/prune-prod-deps.js ./scripts/prune-prod-deps.js
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    mkdir /prod && cp package.json pnpm-lock.yaml pnpm-workspace.yaml /prod/ && \
+    cd /prod && pnpm install --frozen-lockfile --prod --offline --ignore-scripts && \
+    node /app/scripts/prune-prod-deps.js /prod/node_modules
+
+# Style + client-JS build. assets/css/input.css scans src/, views/ and
+# public/js for class names, so all three are inputs here.
 COPY assets ./assets
 COPY views ./views
 COPY public ./public
@@ -41,40 +59,44 @@ COPY scripts/build-js.js ./scripts/build-js.js
 COPY src ./src
 RUN pnpm run build
 
-# Runtime stage: production deps + the app, with the built CSS + JS bundles overlaid.
-FROM node:24-alpine
+# ---------------------------------------------------------------------------
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS runtime
+ARG VERSION=dev
+LABEL org.opencontainers.image.title="Oxyx" \
+      org.opencontainers.image.description="Control panel for Minecraft servers running in Docker." \
+      org.opencontainers.image.source="https://github.com/doubleangels/oxyx" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}"
+
+# libstdc++ (pulls libgcc) is all the Node binary links beyond musl. tini runs
+# as PID 1: it forwards SIGTERM to Node, so `docker stop` triggers the panel's
+# graceful shutdown even without compose's `init: true`, and reaps zombies.
+RUN apk add --no-cache libstdc++ tini
+COPY --from=build /usr/local/bin/node /usr/local/bin/node
+
 WORKDIR /app
-# LOG_PRETTY=false: logs are newline-delimited JSON on stdout for the container
-# runtime to collect; the pretty transport is a dev-only convenience.
+# LOG_PRETTY=false: newline-delimited JSON on stdout for the container runtime.
 ENV NODE_ENV=production \
-    MSM_SKIP_POSTINSTALL=1 \
     DATA_DIR=/data \
     PANEL_HOST=0.0.0.0 \
     PANEL_PORT=25564 \
     LOG_PRETTY=false
-# Reuse the pnpm the build stage already downloaded instead of fetching it again
-# (one less network dependency in this stage). The bin path is read from pnpm's
-# own package.json so a PNPM_VERSION bump can't leave a dangling symlink.
-COPY --from=build /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
-RUN ln -s "../lib/node_modules/pnpm/$(node -p "require('/usr/local/lib/node_modules/pnpm/package.json').bin.pnpm")" /usr/local/bin/pnpm
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# --ignore-scripts: nothing in the production dependency set has a build script
-# (the one allowed script, esbuild's, is a devDependency), so scripts/ needn't
-# be present for this layer and seed-script churn can't invalidate it.
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prod --ignore-scripts
-# Least-volatile inputs first so a src-only change re-copies as little as possible.
+
+# Least-volatile first, so a source-only change re-copies as little as possible.
+COPY package.json ./
+COPY --from=build /prod/node_modules ./node_modules
 COPY --from=build /app/public ./public
 COPY views ./views
-COPY scripts ./scripts
 COPY src ./src
+
 EXPOSE 25564
 VOLUME /data
 # Runs as root: the mounted Docker socket needs it (the host's docker-group GID
 # is unknowable at build time), and a socket-holding container is already
-# root-equivalent on the host - dropping privileges here would only pretend.
-# /healthz is unauthenticated, checks the DB, and returns 503 on failure - a
-# truer liveness signal than /login (which only proves the HTTP listener is up).
+# root-equivalent on the host, so dropping privileges here would only pretend.
+# /healthz is unauthenticated, checks the DB, and returns 503 on failure.
+# busybox wget is part of the Alpine base.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD wget -q -O /dev/null "http://127.0.0.1:${PANEL_PORT}/healthz" || exit 1
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "src/server.js"]

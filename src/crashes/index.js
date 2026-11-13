@@ -10,7 +10,7 @@ const fsp = fs.promises;
 const { nanoid } = require('nanoid');
 const db = require('../db');
 const httpError = require('../utils/httpError');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const logger = require('../logger')('crashes');
 const { serializeError } = require('../utils/logSanitize');
@@ -46,7 +46,7 @@ const BORING_ROOTS = [
 function absPathFor(serverId, filename) {
   // hs_err files live in the server root; crash reports in crash-reports/.
   return filename.startsWith('hs_err')
-    ? dataPath('servers', serverId, filename)
+    ? serverPath(serverId, filename)
     : dataPath('servers', serverId, 'crash-reports', filename);
 }
 
@@ -288,6 +288,7 @@ async function scanAll() {
   }
 }
 
+/** @type {NodeJS.Timeout | null} */
 let watcherTimer = null;
 
 /** Start the background watcher (immediate scan + interval). Returns stop(). */

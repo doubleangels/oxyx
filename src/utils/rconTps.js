@@ -56,7 +56,7 @@ function parseTps(raw) {
   if (!text.trim()) return null;
 
   const forge = parseForgeTps(text);
-  if (forge) return { tps5: null, tps15: null, mspt: null, source: 'forge', ...forge };
+  if (forge) return { source: 'forge', ...forge }; // forge already carries tps5/tps15/mspt
 
   const line = parseTpsLine(text);
   if (line) {

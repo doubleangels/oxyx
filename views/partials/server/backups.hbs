@@ -36,7 +36,7 @@
 </div>
 <div class="card overflow-x-auto">
   <table class="table-base table-stack" id="bk-table">
-    <thead><tr><th>Archive</th><th>Reason</th><th class="text-right">Size</th><th class="text-right">Created</th><th class="text-right">Actions</th></tr></thead>
+    <thead><tr><th scope="col">Archive</th><th scope="col">Reason</th><th scope="col" class="text-right">Size</th><th scope="col" class="text-right">Created</th><th scope="col" class="text-right">Actions</th></tr></thead>
     <tbody>
       {{#each backups}}
         <tr data-backup-row data-backup-id="{{id}}" data-file="{{file}}" data-note="{{note}}" data-size="{{size}}">
@@ -64,4 +64,4 @@
   {{> empty-state iconName='archive' title='No Backups Yet' message='Use Back Up Now for the first one. Scheduled and pre-update backups also collect here automatically.'}}
 {{/if}}
 </div>
-<script type="module" src="/js/pages/server-backups.js"></script>
+<script type="module" src="{{asset '/js/pages/server-backups.js'}}"></script>

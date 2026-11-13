@@ -12,6 +12,7 @@ const os = require('node:os');
 const path = require('node:path');
 const Docker = require('dockerode');
 
+/** @type {import('dockerode') | null} */
 let client = null;
 
 function detectOptions() {
@@ -24,7 +25,7 @@ function detectOptions() {
     '/var/run/docker.sock',
     path.join(os.homedir(), '.docker', 'run', 'docker.sock'),
     process.env.XDG_RUNTIME_DIR ? path.join(process.env.XDG_RUNTIME_DIR, 'docker.sock') : null,
-  ].filter(Boolean);
+  ].filter((p) => typeof p === 'string');
   const found = candidates.find((p) => {
     try {
       return fs.existsSync(p);
@@ -35,6 +36,7 @@ function detectOptions() {
   return { socketPath: found || '/var/run/docker.sock' };
 }
 
+/** @returns {import('dockerode')} */
 function getDocker() {
   if (!client) client = new Docker(detectOptions());
   return client;
@@ -45,6 +47,7 @@ function getDocker() {
  * renders directly.
  */
 async function checkDocker() {
+  /** @type {{ available: boolean, installed: boolean | null, version: string | null, os: string | null, ncpu: number | null, memTotal: number | null, isDockerDesktop: boolean, error: string | null }} */
   const status = {
     available: false,
     installed: null, // best-effort; null = unknown
@@ -61,10 +64,11 @@ async function checkDocker() {
     status.available = true;
     status.installed = true;
     status.version = version.Version;
-    status.os = info.OperatingSystem || '';
+    const osName = info.OperatingSystem || '';
+    status.os = osName;
     status.ncpu = info.NCPU;
     status.memTotal = info.MemTotal;
-    status.isDockerDesktop = /docker desktop/i.test(status.os);
+    status.isDockerDesktop = /docker desktop/i.test(osName);
   } catch (err) {
     status.error = err.code || err.message;
     if (process.platform === 'win32') {

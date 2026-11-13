@@ -82,7 +82,7 @@ server and is barely noticeable in play.
 
 ## In Oxyx
 
-Each server has two separate fields, **Java heap** and **container memory limit**, precisely because
+Each server has two separate fields, **Java Heap** and **Container Memory Limit**, precisely because
 they are different questions. The create wizard sets the container limit 50 percent above the heap
 for you, and the panel refuses to save a server whose container limit is not above its heap, because
 that combination ends in exit code 137 rather than an error message.

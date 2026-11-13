@@ -9,6 +9,7 @@ const { DatabaseSync } = require('node:sqlite');
 const config = require('../config');
 const logger = require('../logger')('db');
 
+/** @type {import('node:sqlite').DatabaseSync | null} */
 let db = null;
 
 // Prepared statements are reusable across calls in node:sqlite, so cache them
@@ -21,6 +22,10 @@ function open() {
   if (db) return db;
   db = new DatabaseSync(path.join(config.dataDir, 'panel.db'));
   db.exec('PRAGMA journal_mode = WAL');
+  // NORMAL is the recommended pairing with WAL: commits no longer fsync each
+  // time (only checkpoints do), and the database stays consistent after a
+  // crash. At worst the last few commits before a power loss are rolled back.
+  db.exec('PRAGMA synchronous = NORMAL');
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA busy_timeout = 5000');
   logger.debug('Opened the panel database.');
@@ -67,6 +72,13 @@ function transaction(fn) {
 function close() {
   if (db) {
     stmtCache.clear();
+    // Fold the WAL back into the main file and empty it, so a copy of the data
+    // folder taken after shutdown is complete without the -wal sidecar.
+    try {
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    } catch {
+      /* best effort: close() still checkpoints on the last connection */
+    }
     db.close();
     db = null;
   }

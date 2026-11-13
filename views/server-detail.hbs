@@ -13,6 +13,16 @@
   </div>
 {{/if}}{{/if}}
 
+{{#if server.damagedSettings}}
+  <div class="notice notice-danger -mt-2 mb-4">
+    {{{icon 'triangle-alert' 'size-4 mt-0.5 shrink-0 text-danger'}}}
+    <div class="min-w-0 flex-1">
+      <span class="font-semibold">Some saved settings could not be read.</span>
+      Part of this server's stored configuration is damaged, so it is shown as empty. Review the Settings tab and save it to repair it.
+    </div>
+  </div>
+{{/if}}
+
 {{! World controls sit beside the tabs about the running game (a right rail at
     xl, a collapsed card below the tab on smaller screens). Other tabs get the
     full width. }}

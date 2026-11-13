@@ -10,8 +10,13 @@ const httpError = require('../utils/httpError');
 const logger = require('../logger')(path.basename(__filename));
 
 // Bookkeeping keys (a "last seen" cursor) move on their own all the time.
-const BOOKKEEPING_KEY = /(mark|cursor|last[-_]?seen|last[-_]?run|checked[-_]?at)/i;
+const BOOKKEEPING_KEY = /(mark|cursor|bridge|last[-_]?seen|last[-_]?run|checked[-_]?at)/i;
 
+/**
+ * @param {string} key
+ * @param {any} [fallback]
+ * @returns {any}
+ */
 function get(key, fallback = null) {
   const row = db.get('SELECT value_json FROM settings WHERE key = ?', key);
   if (!row) return fallback;
@@ -297,6 +302,7 @@ function sanitizeDefaults(patch = {}) {
 // getDefaults() runs once per meter-bar/overview render (the Handlebars
 // meterColor helper fans out per row). The effective defaults only change via
 // setDefaults/resetDefaults, so memoize and invalidate on those two.
+/** @type {Record<string, any> | null} */
 let defaultsCache = null;
 
 /** The effective per-instance defaults: built-in/env base layered with saved overrides. */

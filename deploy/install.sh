@@ -86,11 +86,11 @@ EOF
 # ---------------------------------------------------------------------------
 # Pure helpers. No side effects, so the test suite can call them directly.
 
-# Maps `uname -m` onto the architectures the image is built for.
+# Maps `uname -m` onto the architecture the image is built for. Only 64-bit
+# x86 Linux (amd64) is published.
 normalize_arch() {
   case "$1" in
     x86_64 | amd64) printf 'amd64' ;;
-    aarch64 | arm64) printf 'arm64' ;;
     *) return 1 ;;
   esac
 }
@@ -169,7 +169,7 @@ detect_arch() {
   local raw arch
   raw="$(uname -m)"
   if ! arch="$(normalize_arch "$raw")"; then
-    die "unsupported architecture ${raw}; the image is built for amd64 and arm64."
+    die "unsupported architecture ${raw}; the image is built for 64-bit x86 Linux (amd64) only. Run Oxyx from source on this machine instead (see the README)."
   fi
   printf '%s' "$arch"
 }

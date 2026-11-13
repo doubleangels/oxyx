@@ -26,9 +26,9 @@
         <table class="table-base table-stack" id="permissions-table">
           <thead>
             <tr>
-              <th>User</th>
+              <th scope="col">User</th>
               {{#each matrix.servers}}
-                <th>
+                <th scope="col">
                   <span class="inline-flex items-center gap-2">
                     <img src="{{iconSrc icon}}" alt="" class="size-5 rounded-sm" style="background: {{accent}}" data-fallback-icon="/icons/servers/grass.svg">
                     <span class="truncate" title="{{name}}">{{name}}</span>
@@ -100,5 +100,5 @@
 </div>
 <script type="application/json" id="permissions-capabilities">{{jsonScript matrix.capabilities}}</script>
 <script type="application/json" id="settings-self">{{jsonScript selfUserId}}</script>
-<script type="module" src="/js/pages/permissions.js"></script>
-<script type="module" src="/js/pages/settings.js"></script>
+<script type="module" src="{{asset '/js/pages/permissions.js'}}"></script>
+<script type="module" src="{{asset '/js/pages/settings.js'}}"></script>

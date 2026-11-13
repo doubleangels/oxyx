@@ -50,8 +50,10 @@ Dependencies flow in one direction:
 ```
 
 - **`web/routes/`**: one router per domain (`players`, `worlds`, `crashes`, `blueprints`, `files`, …).
-  `web/app.js` mounts the top-level ones (`api.js`, the session JSON API that also holds the core
-  server routes and mounts the per-server domain routers; `index.js`, the pages; `auth`, `account`,
+  `web/app.js` mounts the top-level ones (`api.js`, the session JSON API; its routes live in
+  `routes/api/*.js`, one module per domain, all registering on the one router in
+  `routes/api/router.js` in the order `api.js` loads them, which also mounts the per-server domain
+  routers; `index.js`, the pages; `auth`, `account`,
   `tasks`, …). Routers validate with zod, call a service, and return JSON
   or render a view. Business logic does not belong here. Two routers are mounted in the **public
   zone**, before `requireAuth`: `routes/status.js` (opt-in per-server HTML status pages) and
@@ -147,7 +149,7 @@ Cross-cutting:
   version list (one request per project, which is what keeps loader and version paired). The update
   checker offers only the newest version EVERY mod supports, and offers nothing at all when the
   answer cannot be established: no scan, a scan for a different version or loader, one that never
-  finished, or a jar neither registry recognises. Scans are manual only, and their progress and
+  finished, or a jar neither registry recognizes. Scans are manual only, and their progress and
   partial results live in `version_compat` (not in the in-memory `services/tasks.js`), so a refresh
   or a panel restart resumes instead of hanging on a spinner; `reconcileScans()` marks scans
   orphaned by a shutdown on the next boot.
@@ -241,8 +243,10 @@ Cross-cutting:
    compatibility scans left running by a previous process as interrupted
    (`compat.reconcileScans()`), then seed starter blueprints (guarded).
 7. Start the HTTP + WS server. On an exposed bind, print the first-run `/setup` PIN.
-8. Install the post-boot runtime guard (catches uncaught faults; `MSM_EXIT_ON_FATAL=1` makes it
-   hard-exit for supervised deployments).
+8. Install the post-boot runtime guard (`src/runtimeGuards.js`): an uncaught exception is logged and
+   the process exits for the supervisor to restart (`OXYX_KEEP_ALIVE_ON_FATAL=1` opts out); an
+   unhandled rejection is logged and the panel stays up (`OXYX_EXIT_ON_FATAL=1` exits on those too).
+   SIGTERM/SIGINT run a graceful shutdown (`src/web/httpLifecycle.js`).
 9. Start background services: WS broker, storage indexer, crash + inventory watchers, scheduler,
    Discord event bridge, chatbot outreach watcher, and the **daily maintenance timer** (prune old
    analytics rows, chatbot transcripts, event history (365 days) and API cache rows, then snapshot
@@ -262,6 +266,8 @@ Cross-cutting:
 `pnpm run build` = `build:css` (Tailwind → `public/css/app.css`) + `build:js` (esbuild →
 `public/dist/js/`, ESM with code-splitting). `postinstall` runs **CSS only**. `public/css/app.css`
 and `public/dist/` are gitignored build artifacts; the Dockerfile build stage runs the full
-`pnpm run build` and copies `public/` into the runtime image. Static assets are served
-`immutable`/long-cache for fingerprinted files, short-cache for CSS/JS, and `no-cache` for HTML and
-`/api`.
+`pnpm run build` and copies `public/` into the runtime image. esbuild names every output
+`<name>-<hash>.js` and writes `public/dist/js/manifest.json`; views reference scripts and the
+stylesheet through the `{{asset}}` helper, which returns the hashed bundle name (or
+`/css/app.css?v=<content hash>`). Those URLs, fonts and icons are served `immutable` for a year;
+unhashed CSS/JS (the no-build dev fallback), HTML and `/api` are `no-cache`.

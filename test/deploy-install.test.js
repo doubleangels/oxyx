@@ -62,8 +62,8 @@ test('sourcing the script runs nothing', () => {
 test('normalize_arch maps what uname reports onto the published images', () => {
   assert.equal(sh('normalize_arch x86_64'), 'amd64');
   assert.equal(sh('normalize_arch amd64'), 'amd64');
-  assert.equal(sh('normalize_arch aarch64'), 'arm64');
-  assert.equal(sh('normalize_arch arm64'), 'arm64');
+  assert.equal(shStatus('normalize_arch aarch64').status, 1, 'arm64 has no published image');
+  assert.equal(shStatus('normalize_arch arm64').status, 1);
   assert.equal(shStatus('normalize_arch armv7l').status, 1, 'refuses an architecture with no image');
   assert.equal(shStatus('normalize_arch i386').status, 1);
 });

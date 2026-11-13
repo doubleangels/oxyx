@@ -203,7 +203,7 @@ function touchLastUsed(id, currentLastUsedAt) {
  * @returns {boolean}
  */
 function scopeAllowsServer(scope, serverId) {
-  return Boolean(scope) && (scope.all || scope.serverIds.includes(serverId));
+  return Boolean(scope && (scope.all || scope.serverIds.includes(serverId)));
 }
 
 module.exports = {

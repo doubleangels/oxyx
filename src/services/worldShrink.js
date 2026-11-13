@@ -225,13 +225,16 @@ async function shrinkRegionFile(
  */
 async function shrinkWorldImpl(serverId, opts = {}) {
   const server = mustServer(serverId);
+  const wantTicks = opts.minInhabitedTicks;
   const minInhabitedTicks =
-    Number.isFinite(opts.minInhabitedTicks) && opts.minInhabitedTicks > 0
-      ? Math.min(Math.round(opts.minInhabitedTicks), 20 * 60 * 60) // cap at 1 game-hour
+    typeof wantTicks === 'number' && Number.isFinite(wantTicks) && wantTicks > 0
+      ? Math.min(Math.round(wantTicks), 20 * 60 * 60) // cap at 1 game-hour
       : DEFAULT_MIN_INHABITED_TICKS;
-  const spawnKeepChunks = Number.isFinite(opts.spawnKeepChunks)
-    ? Math.max(0, Math.min(Math.round(opts.spawnKeepChunks), 256))
-    : SPAWN_KEEP_CHUNKS;
+  const wantSpawn = opts.spawnKeepChunks;
+  const spawnKeepChunks =
+    typeof wantSpawn === 'number' && Number.isFinite(wantSpawn)
+      ? Math.max(0, Math.min(Math.round(wantSpawn), 256))
+      : SPAWN_KEEP_CHUNKS;
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system';
   const worldName = opts.worldName || activeLevelName(server);
@@ -269,7 +272,7 @@ async function shrinkWorldImpl(serverId, opts = {}) {
       }
       dimensions.push(path.relative(dims[0].dir, dir) || '.');
       for (const file of files) {
-        const [, rxs, rzs] = REGION_RE.exec(file);
+        const [, rxs, rzs] = /** @type {RegExpExecArray} */ (REGION_RE.exec(file)); // files were filtered on REGION_RE
         regionsScanned++;
         const r = await shrinkRegionFile(regionDir, file, {
           rx: Number(rxs),

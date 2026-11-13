@@ -1,4 +1,3 @@
-// @ts-nocheck - dynamic Docker/NBT/HTTP-JSON interop; not yet under checkJs (incremental typing).
 'use strict';
 
 // Server orchestration: CRUD, env assembly, container lifecycle. The single
@@ -26,20 +25,27 @@ const logger = require('../logger')(path.basename(__filename));
 const { serializeError } = require('../utils/logSanitize');
 const { dirSize } = require('../utils/statSizes');
 const { propEnvMap } = require('../config/field-catalog');
+const { safeJsonParse } = require('../utils/safeJson');
 
 function rowToServer(row, { parseOverrides = true } = {}) {
   if (!row) return null;
+  // A damaged column falls back to empty and is listed in `damagedColumns`, so
+  // the page still renders and can say what needs re-saving.
+  const damaged = [];
+  const parse = (col, fallback) =>
+    safeJsonParse(row[col], fallback, { where: `servers.${col}:${row.id}`, onBad: () => damaged.push(col) });
   const server = {
     ...row,
-    tags: JSON.parse(row.tags_json || '[]'),
-    env: JSON.parse(row.env_json || '{}'),
+    tags: parse('tags_json', []),
+    env: parse('env_json', {}),
     containerName: row.container_name || null,
     networkName: row.network_name || null,
   };
   if (parseOverrides) {
-    server.extraPorts = JSON.parse(row.extra_ports_json || '[]');
-    server.extraBinds = JSON.parse(row.extra_binds_json || '[]');
+    server.extraPorts = parse('extra_ports_json', []);
+    server.extraBinds = parse('extra_binds_json', []);
   }
+  server.damagedColumns = damaged;
   return server;
 }
 
@@ -66,7 +72,9 @@ function getServer(id) {
 /** The host uid/gid the panel process runs as, or null where it doesn't apply
  *  (Windows / macOS Docker Desktop don't have this bind-mount ownership problem). */
 function panelUidGid() {
-  if (process.platform === 'win32' || typeof process.getuid !== 'function') return null;
+  if (process.platform === 'win32' || typeof process.getuid !== 'function' || typeof process.getgid !== 'function') {
+    return null;
+  }
   return { uid: process.getuid(), gid: process.getgid() };
 }
 
@@ -164,6 +172,8 @@ function assembleEnv(server) {
  * `applyPack` schedules moments later. It's never used once a pin exists, and
  * it never overrides an explicit `server.java_tag` (that column means "the user
  * overrode auto" and must keep winning).
+ * @param {any} server
+ * @param {{ javaTagHint?: string }} [opts]
  */
 function resolveImage(server, { javaTagHint } = {}) {
   // GTNH's Java support is a property of the pinned pack version, not of the
@@ -266,6 +276,11 @@ function previewServerSpec(id) {
 // port change never waits on someone else's slow create.
 let portChain = Promise.resolve();
 
+/**
+ * @template T
+ * @param {() => T | Promise<T>} run
+ * @returns {Promise<T>}
+ */
 function withPortLock(run) {
   const result = portChain.then(run, run);
   portChain = result.then(
@@ -284,6 +299,8 @@ function createServer(input, opts = {}) {
  * opts.start. onProgress(status) receives human-readable progress strings.
  * On any failure before the container exists, the half-created row + data dirs
  * are rolled back so no ghost server holds ports.
+ * @param {any} input
+ * @param {{ actor?: string, start?: boolean, onProgress?: (status: string) => void, javaTagHint?: string }} [opts]
  */
 async function createServerImpl(input, { actor = 'system', start = false, onProgress = () => {}, javaTagHint } = {}) {
   // Fail fast instead of shipping a crash-looping container: anything
@@ -304,6 +321,7 @@ async function createServerImpl(input, { actor = 'system', start = false, onProg
   // Same fail-fast idea for the pinning invariant: an unpinned pack selector
   // would make the image re-resolve "latest" on every start (issue #22).
   require('./packPins').assertPinnedPackEnv(input.type, inputEnv);
+  assertEnvPatterns(inputEnv);
   assertInitHeapFits(inputEnv, input.heapMb ?? settings.getDefaults().heapMb);
 
   const id = `srv_${nanoid(8)}`;
@@ -412,16 +430,9 @@ async function createServerImpl(input, { actor = 'system', start = false, onProg
       });
     });
     db.run('DELETE FROM servers WHERE id = ?', id);
-    try {
-      fs.rmSync(dataPath('servers', id), { recursive: true, force: true });
-    } catch {
-      /* best effort */
-    }
-    try {
-      fs.rmSync(dataPath('logs', id), { recursive: true, force: true });
-    } catch {
-      /* best effort */
-    }
+    // Async: a failed create can leave a half-downloaded modpack behind.
+    await fsp.rm(dataPath('servers', id), { recursive: true, force: true }).catch(() => {});
+    await fsp.rm(dataPath('logs', id), { recursive: true, force: true }).catch(() => {});
     if (err.statusCode === 409 && input.containerName) {
       throw httpError(409, `Container name "${input.containerName}" is already in use by another Docker container.`);
     }
@@ -624,7 +635,7 @@ async function recreateServerImpl(id, { actor = 'system', quiet = false } = {}) 
 /**
  * Build (not start) a server's container from its row, bound to `ports`, and
  * record its id. The one place a container spec is assembled for a rebuild.
- * @param {object} server a server row (getServer)
+ * @param {any} server a server row (getServer)
  * @param {{ game: number, rcon: number }} ports host game + RCON ports
  */
 async function buildContainer(server, ports) {
@@ -713,6 +724,23 @@ function assertInitHeapFits(env, heapMb) {
 }
 
 /**
+ * Reject env values that break a catalog field's `pattern` (for example a
+ * World Save Name with a slash). Blank values pass: they clear the key.
+ * @param {Record<string, string> | null | undefined} env
+ */
+function assertEnvPatterns(env) {
+  const { getField } = require('../config/field-catalog');
+  for (const [key, value] of Object.entries(env || {})) {
+    const field = getField('env', key);
+    if (!field || !field.pattern || value === undefined || value === null || String(value) === '') continue;
+    if (!new RegExp(`^(?:${field.pattern})$`, 'v').test(String(value)) || String(value).includes('\0')) {
+      logger.debug('Rejected an env value that breaks its catalog pattern.', { key });
+      throw httpError(400, `${field.label} is not valid. ${field.patternHelp || ''}`.trim());
+    }
+  }
+}
+
+/**
  * Build the config-column diff, SET clause, params, and recreate flag for a
  * config change. PURE: reads, never writes - the settings save-confirmation
  * preview reuses exactly the decisions the PATCH makes (same env-merge
@@ -757,6 +785,7 @@ function computeServerDiff(id, changes) {
     sets.push('tags_json = ?');
     params.push(JSON.stringify(changes.tags));
   }
+  if (changes.env) assertEnvPatterns(changes.env);
   if (changes.env || changes.heapMb !== undefined) {
     assertInitHeapFits(changes.env || before.env, changes.heapMb ?? before.heap_mb);
   }
@@ -828,26 +857,26 @@ function summarizeServerChanges(id, changes) {
   const rows = [];
 
   const DIRECT_LABELS = {
-    name: 'Display name',
+    name: 'Display Name',
     description: 'Description',
     icon: 'Icon',
-    accent: 'Accent color',
-    notes: 'Private notes',
-    mcVersion: 'Minecraft version',
-    javaTag: 'Java version',
-    heapMb: 'Java heap',
-    containerMemoryMb: 'Container memory limit',
-    cpus: 'CPU limit',
-    updatePolicy: 'Update policy',
-    containerName: 'Container name',
-    networkName: 'Docker network',
-    diskQuotaGb: 'Disk quota',
-    autoStart: 'Start on panel boot',
-    autoRestart: 'Auto-restart on crash',
-    quotaStrict: 'Strict quota enforcement',
+    accent: 'Accent Color',
+    notes: 'Private Notes',
+    mcVersion: 'Minecraft Version',
+    javaTag: 'Java Version',
+    heapMb: 'Java Heap',
+    containerMemoryMb: 'Container Memory Limit',
+    cpus: 'CPU Limit',
+    updatePolicy: 'Update Policy',
+    containerName: 'Container Name',
+    networkName: 'Docker Network',
+    diskQuotaGb: 'Disk Quota',
+    autoStart: 'Start on Panel Boot',
+    autoRestart: 'Auto-Restart on Crash',
+    quotaStrict: 'Strict Quota Enforcement',
     tags: 'Tags',
-    extraPorts: 'Extra port mappings',
-    extraBinds: 'Extra volume binds',
+    extraPorts: 'Extra Port Mappings',
+    extraBinds: 'Extra Volume Binds',
   };
   // Mirrors computeServerDiff's RECREATE_FIELDS plus every block that pushes
   // pending_recreate: which keys need a container rebuild to take effect.
@@ -1466,6 +1495,10 @@ function writeServerProperties(serverId, content, { actor = 'system' } = {}) {
  * knows the file was just rewritten behind the panel's back (Minecraft saves
  * server.properties itself on `whitelist on/off`) passes the snapshot it took
  * beforehand, so the panel's own edits survive and only `key` changes.
+ * @param {string} serverId
+ * @param {string} key
+ * @param {string} value
+ * @param {{ actor?: string, baseText?: string }} [opts]
  * @returns {{ rebuildNeeded: boolean, unlocked: string[] }}
  */
 function setServerProperty(serverId, key, value, { actor = 'system', baseText } = {}) {

@@ -73,8 +73,8 @@ async function validateOverrides(
       `Container name "${containerName}" is invalid. Use letters, digits, "_", ".", "-", starting with a letter or digit, up to 63 characters.`
     );
   }
-  // getContainer() resolves servers WITHOUT a custom name as oxyx-<id> (or legacy msm-<id>) - a
-  // custom name in that namespace could shadow another server's container and
+  // Servers without a custom name run as oxyx-<id> (msm-<id> for ones created before the
+  // rename), so both prefixes are reserved. A custom name in that namespace could shadow another server's container and
   // route every lifecycle action (stop, kill, exec…) to the wrong instance.
   if (containerName != null && /^(oxyx|msm)-/i.test(containerName)) {
     errors.push(

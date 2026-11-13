@@ -31,24 +31,25 @@
     </label>
 
     {{#if (eq type 'enum')}}
-      <select class="input max-w-sm" data-catalog-key="{{key}}" data-catalog-scope="{{scope}}" data-catalog-type="enum" data-catalog-default="{{this.default}}" data-label="{{label}}">
+      <select class="input max-w-sm" aria-label="{{label}}" data-catalog-key="{{key}}" data-catalog-scope="{{scope}}" data-catalog-type="enum" data-catalog-default="{{this.default}}" data-label="{{label}}">
         {{#unless (isDefined default)}}<option value="">Use the Default</option>{{/unless}}
         {{#each options}}
           <option value="{{value}}" {{#if (eq value ../default)}}selected{{/if}} {{#if desc}}data-desc="{{desc}}"{{/if}}>{{label}}</option>
         {{/each}}
       </select>
     {{else if (or (eq type 'number') (or (eq type 'size-mb') (eq type 'range')))}}
-      <input class="input max-w-48 font-mono" type="number" inputmode="numeric"
+      <input class="input max-w-48 font-mono" type="number" inputmode="numeric" aria-label="{{label}}"
         data-catalog-key="{{key}}" data-catalog-scope="{{scope}}" data-catalog-type="number" data-catalog-default="{{this.default}}"
         {{#if (isDefined min)}}min="{{min}}"{{/if}} {{#if (isDefined max)}}max="{{max}}"{{/if}} {{#if (isDefined step)}}step="{{step}}"{{/if}}
         placeholder="{{#if (isDefined default)}}{{this.default}}{{else}}Default{{/if}}">
     {{else if (eq type 'list')}}
-      <textarea class="input max-w-xl font-mono text-xs" rows="2"
+      <textarea class="input max-w-xl font-mono text-xs" rows="2" aria-label="{{label}}"
         data-catalog-key="{{key}}" data-catalog-scope="{{scope}}" data-catalog-type="list"
         placeholder="{{#if (isDefined default)}}{{this.default}}{{else}}One entry per line{{/if}}"></textarea>
     {{else}}
-      <input class="input max-w-xl font-mono" type="text"
+      <input class="input max-w-xl font-mono" type="text" aria-label="{{label}}"
         data-catalog-key="{{key}}" data-catalog-scope="{{scope}}" data-catalog-type="text" data-catalog-default="{{this.default}}"
+        {{#if pattern}}pattern="{{pattern}}" title="{{patternHelp}}"{{/if}}
         placeholder="{{#if (isDefined default)}}{{this.default}}{{else}}Default{{/if}}">
     {{/if}}
 

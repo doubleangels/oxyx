@@ -164,7 +164,7 @@ test('every firing is recorded, and last_run_at is stamped', async () => {
   scheduler.deleteSchedule(s.id);
   assert.ok(row.last_run_at, 'last_run_at stamped');
   const fired = db.all("SELECT summary FROM events WHERE type = 'schedule-fired'");
-  assert.ok(fired.some((e) => e.summary === 'Scheduled task fired: Ban expiry sweep.'));
+  assert.ok(fired.some((e) => e.summary === 'Scheduled task fired: Ban Expiry Sweep.'));
 });
 
 test('a failing task is recorded as schedule-failed and does not throw out of the job', async () => {

@@ -24,7 +24,7 @@
       </div>
       <div class="overflow-x-auto">
         <table class="table-base table-stack">
-          <thead><tr><th class="w-10" data-th="#">#</th><th data-th="Player">Player</th><th class="text-right" data-th="Value">Value</th></tr></thead>
+          <thead><tr><th scope="col" class="w-10" data-th="#">#</th><th scope="col" data-th="Player">Player</th><th scope="col" class="text-right" data-th="Value">Value</th></tr></thead>
           <tbody id="an-scoreboard">
             <tr><td colspan="3"><div class="loading-state">Loading player stats…</div></td></tr>
           </tbody>
@@ -36,7 +36,7 @@
     <div class="card xl:col-span-3">
       <div class="flex flex-wrap items-center gap-2 border-b border-line p-3">
         <h3 class="flex items-center gap-1.5 font-semibold">{{{icon 'activity' 'size-4'}}} Timeline</h3>
-        <input class="input ml-auto w-full max-w-xs" id="an-search" placeholder="Search chat, deaths, players…" autocomplete="off">
+        <input class="input ml-auto w-full max-w-xs" id="an-search" aria-label="Search chat, deaths and players" type="search" placeholder="Search chat, deaths, players…" autocomplete="off">
       </div>
       <div class="flex flex-wrap gap-2 border-b border-line p-3">
         <label class="chip cursor-pointer gap-1.5"><input type="checkbox" class="msm-check" data-an-type="chat" checked> Chat</label>
@@ -57,7 +57,7 @@
 
   </div>
 </div>
-<script type="module" src="/js/pages/analytics.js"></script>
+<script type="module" src="{{asset '/js/pages/analytics.js'}}"></script>
 
 <div class="card mt-4" data-investigation-server="{{server.id}}">
   <div class="flex flex-wrap items-center gap-2 border-b border-line p-3">
@@ -67,4 +67,4 @@
   </div>
   <div id="inv-results" class="p-4 text-sm text-ink-faint">Run the analysis to check every player's ore-discovery rates.</div>
 </div>
-<script type="module" src="/js/pages/investigation.js"></script>
+<script type="module" src="{{asset '/js/pages/investigation.js'}}"></script>

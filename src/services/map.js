@@ -8,7 +8,8 @@ const httpError = require('../utils/httpError');
 const fs = require('node:fs');
 const path = require('node:path');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { safeJsonParse } = require('../utils/safeJson');
+const { serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const serversService = require('./servers');
 const modsService = require('./mods');
@@ -38,7 +39,7 @@ const SUPPORTED = new Set([
 function getMapConfig(serverId) {
   const row = db.get("SELECT * FROM integrations WHERE server_id = ? AND kind = 'bluemap'", serverId);
   if (!row) return { enabled: false, hostPort: null };
-  const cfg = JSON.parse(row.config_json || '{}');
+  const cfg = safeJsonParse(row.config_json, {}, { where: `integrations.config_json:${serverId}:bluemap` });
   return { enabled: Boolean(row.enabled), hostPort: cfg.hostPort || null };
 }
 
@@ -51,7 +52,7 @@ function mapConfDir(serverId, server) {
   const rel = ['PAPER', 'PURPUR', 'PUFFERFISH', 'LEAF', 'FOLIA', 'SPIGOT'].includes(server.type)
     ? ['plugins', 'BlueMap']
     : ['config', 'bluemap'];
-  return dataPath('servers', serverId, ...rel);
+  return serverPath(serverId, ...rel);
 }
 
 // world/nether/end, matching BlueMap's OWN default map ids exactly - so this
@@ -92,7 +93,7 @@ function writeMapConfigs(serverId) {
     const worldFolder = level + dim.suffix;
     // Nether/end aren't generated until first visited - skip rather than
     // point BlueMap at a dir that doesn't exist yet (same failure this fixes).
-    if (dim.suffix && !fs.existsSync(dataPath('servers', serverId, worldFolder))) continue;
+    if (dim.suffix && !fs.existsSync(serverPath(serverId, worldFolder))) continue;
 
     const file = path.join(mapsDir, dim.file);
     const worldLine = `world: "${worldFolder}"`;
@@ -171,7 +172,8 @@ async function disableMap(serverId, { actor = 'system' } = {}) {
 /** Extra container ports for a server, consumed by the servers service. */
 function extraPortsFor(serverId) {
   const cfg = getMapConfig(serverId);
-  return cfg.enabled && cfg.hostPort ? [{ container: BLUEMAP_CONTAINER_PORT, host: cfg.hostPort }] : [];
+  // internal: only the panel's proxy talks to it, so it is not published to the LAN.
+  return cfg.enabled && cfg.hostPort ? [{ container: BLUEMAP_CONTAINER_PORT, host: cfg.hostPort, internal: true }] : [];
 }
 
 async function freePort() {

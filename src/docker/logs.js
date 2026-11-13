@@ -24,7 +24,7 @@ async function fetchLogs(serverId, { tail = 500, timestamps = false, since } = {
       stderr: true,
       tail,
       timestamps,
-      ...(Number.isFinite(since) && since > 0 ? { since: Math.floor(since) } : {}),
+      ...(typeof since === 'number' && Number.isFinite(since) && since > 0 ? { since: Math.floor(since) } : {}),
     };
     const buf = await getContainer(serverId).logs(opts);
     return demuxBuffer(buf);

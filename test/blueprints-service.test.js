@@ -80,7 +80,34 @@ test('importPreview rejects missing, non-JSON, and invalid manifests', async () 
 
 test('importPreview rejects config paths that escape the server dir', async () => {
   const zip = await writeZip('d.zip', { 'manifest.json': JSON.stringify(manifest({ configFiles: ['../evil'] })) });
-  await assert.rejects(bp.importPreview(zip), /escapes the server directory/);
+  await assert.rejects(bp.importPreview(zip), { status: 400, message: /outside the server folder/ });
+});
+
+test('importBlueprint rejects an overlay filename that walks out of the payload (F-27)', async () => {
+  const before = require('../src/db').get('SELECT COUNT(*) AS n FROM servers').n;
+  const m = manifest({
+    embedFiles: true,
+    overlay: [{ name: 'Sneaky', kind: 'mod', filename: '../../../../panel.db' }],
+  });
+  const zip = await writeZip('f27a.zip', {
+    'manifest.json': JSON.stringify(m),
+    'payload/overlay/placeholder.jar': 'x',
+  });
+  await assert.rejects(bp.importBlueprint(zip, {}, { actor: 'tester' }), { status: 400 });
+  for (const filename of ['/etc/passwd', 'a\\..\\b', '..', '.']) {
+    const z = await writeZip('f27b.zip', {
+      'manifest.json': JSON.stringify(manifest({ overlay: [{ name: 'X', kind: 'mod', filename }] })),
+    });
+    await assert.rejects(bp.importPreview(z), { status: 400 }, filename);
+  }
+  assert.equal(require('../src/db').get('SELECT COUNT(*) AS n FROM servers').n, before, 'no server created');
+});
+
+test('importBlueprint rejects a nested traversal in configFiles (F-27)', async () => {
+  for (const rel of ['config/../../../panel.db', 'config//x', '/abs/path', 'config/./x']) {
+    const zip = await writeZip('f27c.zip', { 'manifest.json': JSON.stringify(manifest({ configFiles: [rel] })) });
+    await assert.rejects(bp.importBlueprint(zip, {}, { actor: 'tester' }), { status: 400 }, rel);
+  }
 });
 
 test('importPreview collects warnings', async () => {
@@ -135,4 +162,59 @@ test('exportBlueprint round-trips a seeded server and hides secrets', async () =
       .includes(row.id),
     true
   );
+});
+
+test('imported env goes through the same checks as the wizard (F-31)', async () => {
+  const db = require('../src/db');
+  const before = db.get('SELECT COUNT(*) AS n FROM servers').n;
+  const bad = await writeZip('f31a.zip', {
+    'manifest.json': JSON.stringify(
+      manifest({ config: { type: 'PAPER', mcVersion: '1.21.1', env: { LEVEL: '../..' } } })
+    ),
+  });
+  await assert.rejects(bp.importBlueprint(bad, {}, { actor: 'tester' }), { status: 400, message: /World Save Name/ });
+  assert.equal(db.get('SELECT COUNT(*) AS n FROM servers').n, before, 'refused before a server row exists');
+
+  // The panel's env denylist (SERVER_PORT, LOAD_ENV_FROM_FILE, …) runs in assembleEnv for every
+  // server, blueprint or not; servers-core.test.js covers it.
+});
+
+test('blueprint uploads: a previewed file expires, and an oversized upload is refused up front (F-32)', async () => {
+  const { scheduleUploadExpiry } = require('../src/web/routes/blueprints');
+  const tmp = dataPath('tmp', 'bpup-expiretest.mcserver.zip');
+  fs.mkdirSync(path.dirname(tmp), { recursive: true });
+  fs.writeFileSync(tmp, 'x');
+  scheduleUploadExpiry('bpup-expiretest.mcserver.zip', tmp, 20);
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(fs.existsSync(tmp), false);
+
+  const login = await app.req('POST', '/login', { body: { username: 'admin', password: 'supersecret123' } });
+  const cookie = login.setCookie.map((c) => c.split(';')[0]).join('; ');
+  // A raw request: declare 9 GB and send nothing. The preflight answers on the
+  // headers alone, before multer reads a byte.
+  const base = new URL(await app.start());
+  const status = await new Promise((resolve, reject) => {
+    const req = require('node:http').request(
+      {
+        host: base.hostname,
+        port: base.port,
+        method: 'POST',
+        path: '/api/blueprints/import-preview',
+        headers: {
+          Cookie: cookie,
+          Accept: 'application/json',
+          'Content-Type': 'multipart/form-data; boundary=x',
+          'Content-Length': String(9 * 1024 ** 3),
+        },
+      },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode);
+        req.destroy();
+      }
+    );
+    req.on('error', (err) => (err.code === 'ECONNRESET' ? null : reject(err)));
+    req.flushHeaders();
+  });
+  assert.equal(status, 413);
 });

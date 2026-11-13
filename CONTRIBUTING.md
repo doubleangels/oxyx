@@ -149,9 +149,9 @@ users:
   because the server was running.").
 - **No `" - "` as a sentence dash, and no `–` or `—`.** Split into two
   sentences, use a colon, or a parenthetical. Hyphenated compounds are fine.
-- **Proper nouns stay capitalised:** Minecraft, Mojang, Docker, Java, RCON,
+- **Proper nouns stay capitalized:** Minecraft, Mojang, Docker, Java, RCON,
   Modrinth, CurseForge, BlueMap, Discord, Fabric/Forge/NeoForge/Quilt/Paper/
-  Purpur, Bedrock, Geyser, Node.js, pnpm. Capitalise an interpolated
+  Purpur, Bedrock, Geyser, Node.js, pnpm. Capitalize an interpolated
   `${loader}` through the `capitalize()` helper.
 - **No infrastructure jargon in user text:** "rebuild the server" not
   "recreate", "the data folder" not `./data`, "stopped for running out of

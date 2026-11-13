@@ -37,7 +37,7 @@ const db = require('../db');
 const httpError = require('../utils/httpError');
 const logger = require('../logger')(path.basename(__filename));
 const { serializeError } = require('../utils/logSanitize');
-const { dataPath } = require('../storage/pathGuard');
+const { serverPath } = require('../storage/pathGuard');
 const { curseforgeFingerprint } = require('../utils/murmur2');
 const { compatibleLoaders } = require('../utils/loaderCompat');
 const modrinth = require('./modrinthApi');
@@ -106,7 +106,7 @@ async function inventory(serverId, { onProgress = () => {} } = {}) {
 
   const kind = modsService.contentKindOf(server); // 'mod' | 'plugin'
   const dirRel = modsService.contentDir(server, kind);
-  const dirAbs = dataPath('servers', serverId, dirRel);
+  const dirAbs = serverPath(serverId, dirRel);
   let entries;
   try {
     entries = await fsp.readdir(dirAbs, { withFileTypes: true });
@@ -291,7 +291,7 @@ function modFiles(serverId) {
   const server = serversService.getServer(serverId);
   if (!server) return [];
   const kind = modsService.contentKindOf(server);
-  const dirAbs = dataPath('servers', serverId, modsService.contentDir(server, kind));
+  const dirAbs = serverPath(serverId, modsService.contentDir(server, kind));
   let names;
   try {
     // Enabled jars only - the same set inventory() reads, so the signature
@@ -326,7 +326,7 @@ function modCount(serverId) {
   const server = serversService.getServer(serverId);
   if (!server) return 0;
   const kind = modsService.contentKindOf(server);
-  const dirAbs = dataPath('servers', serverId, modsService.contentDir(server, kind));
+  const dirAbs = serverPath(serverId, modsService.contentDir(server, kind));
   let st;
   try {
     st = fs.statSync(dirAbs);

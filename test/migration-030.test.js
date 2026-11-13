@@ -1,6 +1,6 @@
 'use strict';
 
-// 031: a pending port move left by an earlier build (PR #67's design) is
+// 030: a pending port move left by an earlier build (PR #67's design) is
 // dropped, and the server's history says so.
 
 require('./helpers/env');
@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const { migrate } = require('../src/db/migrate');
 migrate();
 const db = require('../src/db');
-const { up } = require('../src/db/migrations/031_port_change_immediate');
+const { up } = require('../src/db/migrations/030_port_change_immediate');
 
 test('a pending move is dropped, with a history line; servers without one are untouched', () => {
   db.run(

@@ -86,7 +86,9 @@ allocation, disk quotas, at-rest secret encryption), and wire formats are all de
 4. **Server code is plain CommonJS JS — no TypeScript compile step.** Type safety is JSDoc + a
    `tsc --checkJs` gate. `types/globals.d.ts` holds ambient augmentations; dynamic-interop files
    (Docker/NBT/HTTP-JSON) carry a `// @ts-nocheck` header while typing is grown incrementally. New
-   modules are checked by default — keep them clean.
+   modules are checked by default — keep them clean. `strictNullChecks` is on, and
+   `test/ts-nocheck-baseline.test.js` fails if the `@ts-nocheck` count rises (lower its baseline
+   when you clear one).
 5. **Browser JS (`public/js/`) is hand-written ESM progressive enhancement** — no framework, no SPA.
    esbuild bundles it to `public/dist/js/` for production; the app serves that when present and raw
    source otherwise, so a dev run without a build still works. `public/vendor/chart.umd.js` is a
@@ -98,6 +100,12 @@ allocation, disk quotas, at-rest secret encryption), and wire formats are all de
 - `src/web/middleware/asyncHandler.js` — wraps async route handlers so rejections reach the error
   handler; prefer it over hand-written `try/catch → next(err)`.
 - `src/web/middleware/jsonErrorHandler.js` — the standard JSON error handler (redacts 5xx detail).
+- `public/js/lib/api.js` — `api(path, { method, body, action })` for every browser call to the JSON
+  API (timeout, sign-in redirect on 401, an Error whose message is safe to toast). ESLint refuses a
+  bare `fetch` outside the grandfathered list in `eslint.config.js`; migrate files off that list.
+- `public/js/lib/format.js` — the `html` tagged template escapes every interpolated value (use
+  `raw()` only for panel-made markup such as icons). ESLint refuses a plain template literal
+  assigned to `innerHTML` outside the grandfathered list in `eslint.config.js`.
 - Template helpers for JSON the browser will `JSON.parse`: `{{jsonScript x}}` inside `<script>`
   text, `{{jsonAttr x}}` inside a `data-*` attribute. Either brace count works; the name is the rule.
 
@@ -185,9 +193,9 @@ validation and error messages, and the docs — follows one house style (full de
 - **ALL CAPS:** only `page-header heading=`.
 - **Sentence case (a full sentence):** everything else — help, hints, tooltips, placeholders,
   empty-state bodies, toasts, confirm-dialog bodies _and_ titles, event and history summaries.
-- Proper nouns stay capitalised in any casing: Minecraft, Mojang, Docker, Java, RCON, Modrinth,
+- Proper nouns stay capitalized in any casing: Minecraft, Mojang, Docker, Java, RCON, Modrinth,
   CurseForge, BlueMap, Discord, Fabric/Forge/NeoForge/Quilt/Paper/Purpur, Bedrock, Geyser, Node.js,
-  pnpm. Capitalise an interpolated `${loader}` through the `capitalize()` helper.
+  pnpm. Capitalize an interpolated `${loader}` through the `capitalize()` helper.
 
 ### Sentences and punctuation
 

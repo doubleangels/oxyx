@@ -12,7 +12,7 @@ until a token exists.
 
 ## Enabling it
 
-**Settings → Public API → New Key**. Give it a name, choose what it can see (all
+**Panel Settings → Public API → New Key**. Give it a name, choose what it can see (all
 servers, or a specific subset), and optionally an expiry date. The full key (a
 Bearer token) is shown **once**, in a dialog; copy it now, because only a short prefix
 is kept afterwards, for identification in the list.

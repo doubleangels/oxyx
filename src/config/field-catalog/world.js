@@ -2,6 +2,8 @@
 
 // World: save selection, generation, distances, and world-level toggles.
 
+const { LEVEL_NAME_PATTERN } = require('../../utils/levelName');
+
 module.exports = [
   {
     key: 'LEVEL',
@@ -11,6 +13,8 @@ module.exports = [
     help: 'Name of the world save directory inside the server folder. Change it to switch between saves. The old world stays on disk under its own name.',
     type: 'text',
     default: 'world',
+    pattern: LEVEL_NAME_PATTERN,
+    patternHelp: 'Use a plain folder name of up to 64 characters, with no slashes, that does not start with a dot.',
     mode: 'advanced',
     section: 'world',
     requiresRestart: true,

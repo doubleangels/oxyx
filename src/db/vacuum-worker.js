@@ -19,7 +19,7 @@ try {
   d.exec('PRAGMA busy_timeout = 10000');
   d.exec(`VACUUM INTO '${String(destPath).replace(/'/g, "''")}'`);
   d.close();
-  parentPort.postMessage({ ok: true, blockedMs: Date.now() - started });
+  parentPort?.postMessage({ ok: true, blockedMs: Date.now() - started });
 } catch (err) {
-  parentPort.postMessage({ ok: false, blockedMs: Date.now() - started, error: String((err && err.message) || err) });
+  parentPort?.postMessage({ ok: false, blockedMs: Date.now() - started, error: String((err && err.message) || err) });
 }

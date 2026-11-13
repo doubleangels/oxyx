@@ -22,3 +22,38 @@ export function escapeHtml(s) {
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   );
 }
+
+// Auto-escaping HTML templates. Every interpolated value is escaped unless it
+// is itself the result of html`` or raw(), so call sites cannot forget to:
+//
+//   el.innerHTML = html`<li title="${name}">${name} ${raw(iconSvg)}</li>`;
+//   list.innerHTML = html`<ul>${items.map((i) => html`<li>${i.label}</li>`)}</ul>`;
+//
+// Arrays are joined (each item escaped the same way); null/undefined render as
+// ''. Assigning the result to innerHTML stringifies it. Use raw() only for
+// markup the panel itself produced (icons, numbers already formatted), never
+// for text that came from a server, a player or a file.
+class SafeHtml {
+  constructor(value) {
+    this.value = value;
+  }
+  toString() {
+    return this.value;
+  }
+}
+
+export function raw(markup) {
+  return new SafeHtml(String(markup ?? ''));
+}
+
+function htmlPiece(v) {
+  if (v instanceof SafeHtml) return v.value;
+  if (Array.isArray(v)) return v.map(htmlPiece).join('');
+  return escapeHtml(v);
+}
+
+export function html(strings, ...values) {
+  let out = strings[0];
+  for (let i = 0; i < values.length; i++) out += htmlPiece(values[i]) + strings[i + 1];
+  return new SafeHtml(out);
+}

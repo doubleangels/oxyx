@@ -51,6 +51,54 @@ function jsBundleIsStale(srcDir, distDir) {
     return false; // unreadable layout: keep the old behavior (serve the bundle if present)
   }
 }
+// A content-hashed esbuild output (app-3OAVNFBM.js, chunks/chunk-AB12CD34.js)
+// never changes under the same name, so it can be cached for a year.
+const HASHED_JS_RE = /-[A-Z0-9]{8}\.js(\.map)?$/;
+
+/**
+ * Asset URL resolver for templates (`{{asset '/js/pages/map.js'}}`).
+ * - JS: the hashed bundle name from public/dist/js/manifest.json when the
+ *   bundle is in use, else the raw source path (dev / no build).
+ * - CSS: the path plus `?v=<content hash>`, recomputed whenever the file's
+ *   mtime moves (Tailwind --watch in dev rewrites it in place).
+ * @param {{ root: string, manifest: Record<string, string> | null }} opts
+ */
+function makeAssetResolver({ root, manifest }) {
+  /** @type {Map<string, { mtimeMs: number, hash: string }>} */
+  const cssHashes = new Map();
+  return function asset(url) {
+    const u = String(url || '');
+    if (manifest && u.startsWith('/js/')) {
+      const hashed = manifest[u.slice('/js/'.length)];
+      return hashed ? `/js/${hashed}` : u;
+    }
+    if (u.startsWith('/css/') && u.endsWith('.css')) {
+      const file = path.join(root, 'public', u);
+      try {
+        const { mtimeMs } = fs.statSync(file);
+        let entry = cssHashes.get(file);
+        if (!entry || entry.mtimeMs !== mtimeMs) {
+          const hash = require('node:crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          entry = { mtimeMs, hash: hash.slice(0, 12) };
+          cssHashes.set(file, entry);
+        }
+        return `${u}?v=${entry.hash}`;
+      } catch {
+        return u;
+      }
+    }
+    return u;
+  };
+}
+
+/** The bundle manifest, or null when there is none or it cannot be read. */
+function readJsManifest(distDir) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(distDir, 'manifest.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
 const { captureError } = require('../instrument');
 const { serializeError } = require('../utils/logSanitize');
 
@@ -71,7 +119,7 @@ const STATUS_META = {
   updating: { label: 'Updating', color: 'diamond', pulse: true },
   stopped: { label: 'Stopped', color: 'stone', pulse: false },
   crashed: { label: 'Crashed', color: 'redstone', pulse: false },
-  'over-quota': { label: 'Over quota', color: 'redstone', pulse: false },
+  'over-quota': { label: 'Over Quota', color: 'redstone', pulse: false },
 };
 const STATUS_TEXT = {
   grass: 'text-ok',
@@ -184,6 +232,8 @@ function createApp() {
   if (config.trustProxy !== false) app.set('trust proxy', config.trustProxy);
 
   app.use(require('./middleware/securityHeaders').securityHeaders);
+  // Before everything that answers a request: refuse rebinding host names.
+  app.use(require('./middleware/hostGuard').hostGuard);
 
   // Gzip/deflate text responses (HTML, JS, CSS, JSON). Already-compressed bodies
   // (PNG icons, zip/jar downloads, backups) are skipped by the default
@@ -196,6 +246,13 @@ function createApp() {
     })
   );
 
+  // Which client bundle to serve is decided once at startup (see below).
+  const DIST_JS_DIR = path.join(config.root, 'public', 'dist', 'js');
+  const hasJsBundle =
+    fs.existsSync(DIST_JS_DIR) && !jsBundleIsStale(path.join(config.root, 'public', 'js'), DIST_JS_DIR);
+  const jsManifest = hasJsBundle ? readJsManifest(DIST_JS_DIR) : null;
+  const asset = makeAssetResolver({ root: config.root, manifest: jsManifest });
+
   app.engine(
     'hbs',
     engine({
@@ -206,6 +263,8 @@ function createApp() {
       helpers: {
         icon,
         markdown,
+        // Asset URLs hold only [A-Za-z0-9/._?=-]: safe in an attribute verbatim.
+        asset: (url) => new SafeString(HbsUtils.escapeExpression(asset(url)).replace(/&#x3D;/g, '=')),
         eq: (a, b) => a === b,
         startsWith: (s, p) => typeof s === 'string' && s.startsWith(p),
         ne: (a, b) => a !== b,
@@ -297,9 +356,6 @@ function createApp() {
   // /js/**.js source when a build exists (see scripts/build-js.js). No build
   // (fresh `pnpm start`, or `pnpm dev`) -> this falls straight through to the
   // raw source below, so nothing breaks without a build step.
-  const DIST_JS_DIR = path.join(config.root, 'public', 'dist', 'js');
-  const hasJsBundle =
-    fs.existsSync(DIST_JS_DIR) && !jsBundleIsStale(path.join(config.root, 'public', 'js'), DIST_JS_DIR);
   if (hasJsBundle) {
     app.use('/js', (req, res, next) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -309,15 +365,16 @@ function createApp() {
       } catch {
         return next(); // malformed %-escape: not a bundle path, let static 404 it
       }
-      if (!rel.endsWith('.js') || rel.includes('..') || rel.includes('\0')) return next();
+      if (!/\.js(\.map)?$/.test(rel) || rel.includes('..') || rel.includes('\0')) return next();
       const built = path.join(DIST_JS_DIR, rel);
       if (!built.startsWith(DIST_JS_DIR + path.sep)) return next();
       fs.access(built, fs.constants.R_OK, (err) => {
         if (err) return next();
-        res.type('application/javascript');
-        // Revalidate every load (a 304 when unchanged): an hour of max-age kept
-        // running a fixed bug's old script long after an update.
-        res.setHeader('Cache-Control', 'no-cache');
+        res.type(rel.endsWith('.map') ? 'application/json' : 'application/javascript');
+        // Hashed names are immutable (new code is a new URL). An unhashed name
+        // (an older build, or a direct request for /js/app.js) revalidates
+        // every load, so a fixed bug's old script never lingers.
+        res.setHeader('Cache-Control', HASHED_JS_RE.test(rel) ? `public, max-age=${ONE_YEAR}, immutable` : 'no-cache');
         res.sendFile(built);
       });
     });
@@ -328,12 +385,19 @@ function createApp() {
   //    9.5 MB) are content-stable - their bytes never change without a new
   //    filename - so cache them hard and skip the conditional-GET storm those
   //    directories otherwise trigger on every page load.
-  //  - app-owned css/js still only gets a 1-hour max-age (not `immutable`), so a
-  //    deploy is picked up within the hour even before the hashed-bundle step.
+  //  - app-owned css/js revalidates on every load, except a stylesheet asked
+  //    for with the ?v=<content hash> the `asset` helper adds: that URL changes
+  //    whenever the file does, so it is cached for a year.
+  app.use('/css', (req, res, next) => {
+    if (typeof req.query.v === 'string' && /^[0-9a-f]{12}$/.test(req.query.v)) res.locals.versionedAsset = true;
+    next();
+  });
   app.use(
     express.static(path.join(config.root, 'public'), {
       setHeaders(res, filePath) {
         if (/[\\/](fonts|icons)[\\/]/.test(filePath)) {
+          res.setHeader('Cache-Control', `public, max-age=${ONE_YEAR}, immutable`);
+        } else if (/\.css$/.test(filePath) && res.locals && res.locals.versionedAsset) {
           res.setHeader('Cache-Control', `public, max-age=${ONE_YEAR}, immutable`);
         } else if (/\.(js|css|mjs)$/.test(filePath)) {
           // App code and styles revalidate on every load (304 when unchanged),
@@ -400,14 +464,17 @@ function createApp() {
       secure: config.cookieSecure,
     },
   });
+  // BlueMap proxy: authenticated by a per-server token in the path, never by
+  // the session cookie, so it mounts before the session loads (see mapProxy.js).
+  app.use('/map', require('./routes/mapProxy'));
   app.use(sessionMiddleware);
   app.set('sessionMiddleware', sessionMiddleware);
   app.use(originGuard);
 
-  const { apiLimiter, authLimiter } = require('./middleware/rateLimit');
+  const { apiLimiter, authLimiter, statusLimiter } = require('./middleware/rateLimit');
   app.use(['/login', '/login/2fa', '/setup'], authLimiter);
   app.use(require('./routes/auth'));
-  app.use('/status', require('./routes/status')); // public, read-only, opt-in per server
+  app.use('/status', statusLimiter, require('./routes/status')); // public, read-only, opt-in per server
   // Public, read-only API: Bearer-token auth (no cookie), GET-only. Mounted in
   // the public zone - BEFORE requireAuth (there is no session to load) and
   // BEFORE `app.use('/api', apiLimiter)` so the panel-wide per-IP limiter does
@@ -446,12 +513,11 @@ function createApp() {
   app.use('/api', require('./routes/api'));
   app.use('/api/tasks', require('./routes/tasks'));
   app.use('/api/solver', require('./routes/solver'));
-  app.use('/map', require('./routes/mapProxy'));
   app.use(routes);
 
   // 404 + error pages (kept friendly; detailed errors go to the server log only)
   app.use((req, res) =>
-    res.status(404).render('error', { title: 'Not found', code: 404, message: 'That page does not exist.' })
+    res.status(404).render('error', { title: 'Not Found', code: 404, message: 'That page does not exist.' })
   );
 
   app.use((err, req, res, next) => {
@@ -490,4 +556,4 @@ function createApp() {
   return app;
 }
 
-module.exports = { createApp, jsonScript, jsonAttr, orHelper, andHelper, jsBundleIsStale };
+module.exports = { createApp, jsonScript, jsonAttr, orHelper, andHelper, jsBundleIsStale, makeAssetResolver };

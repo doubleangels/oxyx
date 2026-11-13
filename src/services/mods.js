@@ -16,7 +16,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { nanoid } = require('nanoid');
 const db = require('../db');
-const { dataPath } = require('../storage/pathGuard');
+const { dataPath, serverPath } = require('../storage/pathGuard');
 const { recordEvent } = require('../events');
 const library = require('./library');
 const modrinth = require('./modrinthApi');
@@ -127,7 +127,7 @@ function locateContentDir(server, row, file) {
   if (row) return contentDir(server, row.kind);
   for (const kind of ['mod', 'datapack', 'resourcepack']) {
     const dirRel = contentDir(server, kind);
-    const base = dataPath('servers', server.id, dirRel, file);
+    const base = serverPath(server.id, dirRel, file);
     if (fs.existsSync(base) || fs.existsSync(`${base}.disabled`)) return dirRel;
   }
   return contentDir(server, 'mod'); // not found anywhere - fall back to the old default
@@ -328,7 +328,7 @@ async function listContent(serverId) {
   // unlike mods/plugins which are loader/platform-specific - always scan all
   // three dirs, not just the one matching this server's type.
   for (const kind of [primaryKind, 'datapack', 'resourcepack']) {
-    const dirAbs = dataPath('servers', serverId, contentDir(server, kind));
+    const dirAbs = serverPath(serverId, contentDir(server, kind));
     let entries;
     try {
       entries = await fsp.readdir(dirAbs, { withFileTypes: true });
@@ -856,7 +856,7 @@ async function setEnabled(serverId, file, enabled, { actor = 'system' } = {}) {
 
   if (managedBy === 'overlay' || !isPackServer(server)) {
     const dirRel = locateContentDir(server, row, file);
-    const base = dataPath('servers', serverId, dirRel, file);
+    const base = serverPath(serverId, dirRel, file);
     const disabled = `${base}.disabled`;
     if (enabled && fs.existsSync(disabled)) await fsp.rename(disabled, base);
     else if (!enabled && fs.existsSync(base)) await fsp.rename(base, disabled);
@@ -917,7 +917,7 @@ async function removeContent(serverId, file, { actor = 'system' } = {}) {
   const dirRel = locateContentDir(server, row, file);
   let freed = 0;
   for (const candidate of [file, `${file}.disabled`]) {
-    const abs = dataPath('servers', serverId, dirRel, candidate);
+    const abs = serverPath(serverId, dirRel, candidate);
     if (fs.existsSync(abs)) {
       freed = (await fsp.stat(abs)).size;
       await fsp.rm(abs);
@@ -1126,10 +1126,10 @@ async function reapplyOverlay(serverId, { actor = 'system' } = {}) {
   let restored = 0;
   for (const row of rows) {
     const dirRel = contentDir(server, row.kind);
-    const target = dataPath('servers', serverId, dirRel, row.enabled ? row.filename : `${row.filename}.disabled`);
+    const target = serverPath(serverId, dirRel, row.enabled ? row.filename : `${row.filename}.disabled`);
     if (!fs.existsSync(target) && !fs.existsSync(`${target}.disabled`)) {
       await library.installToServer(row.library_id, serverId, dirRel, { filename: row.filename });
-      if (!row.enabled) await fsp.rename(dataPath('servers', serverId, dirRel, row.filename), target);
+      if (!row.enabled) await fsp.rename(serverPath(serverId, dirRel, row.filename), target);
       restored += 1;
     }
   }

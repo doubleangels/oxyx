@@ -86,7 +86,7 @@
   --color-stone-925: #16191c;
   --color-stone-950: #0e1113;
 
-  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+  --font-pixel: 'Press Start 2P', 'Press Start 2P Fallback', 'Courier New', monospace;
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
 
@@ -157,8 +157,20 @@
 
 @font-face {
   font-family: 'Press Start 2P';
-  src: url('/fonts/PressStart2P-Regular.ttf') format('truetype');
+  src: url('/fonts/PressStart2P-Regular.woff2') format('woff2');
   font-display: swap;
+}
+/* A local monospace face reshaped to Press Start 2P's box, so a heading does
+   not reflow when the real font swaps in. Press Start 2P glyphs are 1em wide
+   with a 1em ascent and no descent; these monospace faces are 0.6em wide, so
+   scale by 1/0.6 and set the ascent relative to the scaled size (1 / 1.6667). */
+@font-face {
+  font-family: 'Press Start 2P Fallback';
+  src: local('Courier New'), local('Menlo'), local('Consolas'), local('DejaVu Sans Mono'), local('Liberation Mono');
+  size-adjust: 166.67%;
+  ascent-override: 60%;
+  descent-override: 0%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: 'IBM Plex Sans';
@@ -862,7 +874,8 @@
     @apply w-full rounded-sm border border-line-strong bg-inset px-3 py-2 text-sm text-ink
       transition-[border-color,box-shadow] duration-150
       placeholder:text-ink-faint focus:border-focus focus:outline-none
-      focus:ring-[3px] focus:ring-focus/25;
+      focus:ring-[3px] focus:ring-focus/25
+      focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus;
   }
   /* Fields advertise interactivity on hover (stone-500 reads stronger than
      line-strong in BOTH themes); focus keeps the diamond ring. */

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bug 2 — "custom zip native loader": a fully pre-installed server zip (a
-// locally-prepared pack, e.g. FTB StoneBlock 4) must be detected so MSM pins
+// locally-prepared pack, e.g. FTB StoneBlock 4) must be detected so the panel pins
 // the container to the loader build already inside the archive instead of
 // reinstalling/replacing it.
 

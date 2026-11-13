@@ -16,7 +16,7 @@ playful in-world wizard; both are editable.
   deterministic, Minecraft-version-aware vanilla recipe help.
 - Join greetings and a configurable one-time play-session check-in remind players the chatbot is
   available. `@wizard chat` opens a short opt-in conversation window; `@wizard bye` closes it.
-- **Basic users** may invoke enabled self/world powers. **Power controllers** may invoke separately
+- **Basic Users** may invoke enabled self/world powers. **Power Controllers** may invoke separately
   validated actions affecting another online player. Players in neither group remain
   conversation-only.
 - Basic-user self-gifts use an item allowlist. Controllers may give another player any valid
@@ -57,7 +57,7 @@ modded recipes direct the player to JEI/REI rather than fabricating an answer.
 
 The internal `wizard` route/module/table names are retained for upgrade and API compatibility;
 "chatbot" is the user-facing product term. Likewise, the stored `power_testers_json` field maps to
-the UI's **Basic users** group.
+the UI's **Basic Users** group.
 
 ## Dependency footprint (`minecraft-data`)
 

@@ -91,7 +91,7 @@ const DATA_KEY = loadOrCreateDataKey();
 // Decrypt-only. Null when SESSION_SECRET is unset.
 const LEGACY_KEY = config.sessionSecret ? crypto.scryptSync(config.sessionSecret, 'msm.secrets.v1', 32) : null;
 
-const ENCRYPT_KEY = DATA_KEY || LEGACY_KEY;
+const ENCRYPT_KEY = /** @type {Buffer} */ (DATA_KEY || LEGACY_KEY);
 if (!ENCRYPT_KEY) {
   logger.warn(
     'No at-rest encryption key is available. Set SESSION_SECRET or make DATA_DIR writable before storing credentials.'

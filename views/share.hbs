@@ -1,0 +1,23 @@
+{{> page-header heading="ADD A SHARED LINK" sub="Choose the server to add it to. The Mods tab opens with the link filled in, ready to install."}}
+
+{{#if link}}
+  <div class="card p-4 sm:p-5">
+    <p class="label">Shared Link</p>
+    <p class="mt-1 break-all font-mono text-sm text-ink">{{link}}</p>
+  </div>
+  {{#if targets.length}}
+    <div class="mt-4 grid gap-2 sm:grid-cols-2">
+      {{#each targets}}
+        <a class="card flex items-center gap-3 p-4 hover:bg-inset" href="{{href}}">
+          {{{icon 'server' 'size-5 text-ink-faint'}}}
+          <span class="min-w-0 flex-1 truncate font-medium">{{name}}</span>
+          {{{icon 'chevron-right' 'size-4 text-ink-faint'}}}
+        </a>
+      {{/each}}
+    </div>
+  {{else}}
+    {{> empty-state iconName='server-off' title='No Server to Add It To' message='You need the content permission on at least one server to add mods or plugins.'}}
+  {{/if}}
+{{else}}
+  {{> empty-state iconName='link-2-off' title='No Link Found' message='The shared text did not contain a web address. Share the page of a mod or plugin from your browser instead.'}}
+{{/if}}

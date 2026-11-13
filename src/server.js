@@ -23,37 +23,7 @@ function bailOut(code = 1) {
 }
 
 function installRuntimeGuards() {
-  // Last-resort safety net: a control panel must stay up. The specific fixes (e.g.
-  // WebSocket 'error' handlers) prevent the known crash paths; this backstop keeps
-  // a stray uncaught error or rejected promise from taking the whole panel down.
-  // Installed only AFTER a successful boot, so startup errors stay fatal and
-  // visible instead of being silently swallowed.
-  //
-  // Operators running under a supervisor (systemd, Docker restart:) that WANT a
-  // hard restart on an unexpected fault can set OXYX_EXIT_ON_FATAL=1 (or MSM_EXIT_ON_FATAL=1).
-  const exitOnFatal = /^(1|true|yes)$/i.test(process.env.OXYX_EXIT_ON_FATAL || process.env.MSM_EXIT_ON_FATAL || '');
-
-  const report = (kind, err) => {
-    const info = serializeError(err);
-    // Structured line for log aggregators, plus a panel event so it surfaces in
-    // Activity (and Discord Alerts, if wired) rather than only in stdout.
-    logger.error('Caught a fatal runtime fault and kept the panel alive.', { kind, err: info });
-    captureError(err, { scope: 'runtime-guard', kind });
-    try {
-      require('./events').recordEvent({
-        type: 'panel-error',
-        actor: 'system',
-        summary: `Uncaught ${kind}: ${info.errorMessage}.`.slice(0, 300),
-        details: info,
-      });
-    } catch {
-      /* the DB may be exactly what broke - never let reporting throw */
-    }
-    if (exitOnFatal) process.exit(1);
-  };
-
-  process.on('uncaughtException', (err) => report('exception', err));
-  process.on('unhandledRejection', (reason) => report('rejection', reason));
+  require('./runtimeGuards').installRuntimeGuards({ exit: bailOut });
 }
 
 try {
@@ -157,6 +127,15 @@ try {
     startBackgroundServices(httpServer);
   });
 
+  const lifecycle = require('./web/httpLifecycle');
+  lifecycle.configureHttpTimeouts(httpServer);
+  lifecycle.installGracefulShutdown(httpServer, {
+    getWss: () => httpServer.wss,
+    closeDb: () => require('./db').close(),
+    exit: bailOut,
+    logger,
+  });
+
   httpServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       logger.fatal(
@@ -189,11 +168,13 @@ try {
 // Everything that runs once the panel is listening. Split out so a throw here is
 // clearly a post-boot background failure, not a startup failure.
 function startBackgroundServices(httpServer) {
-  require('./ws').attachWebSockets(httpServer);
+  // Kept on the server so graceful shutdown can close live views.
+  httpServer.wss = require('./ws').attachWebSockets(httpServer);
   require('./storage/indexer').startIndexer();
   require('./crashes').startCrashWatcher({});
   require('./services/scheduler').startScheduler();
   require('./integrations/discord').startEventBridge();
+  require('./services/push').startPushBridge();
   require('./services/inventory').startSnapshotWatcher();
   require('./services/wizard').startOutreachWatcher();
 
@@ -253,6 +234,14 @@ function startBackgroundServices(httpServer) {
     } catch (err) {
       logger.error('Pruning event history or API cache failed.', { err: serializeError(err) });
     }
+    // Refresh the query planner's statistics where they have drifted. Cheap,
+    // and a no-op when nothing changed enough to matter.
+    try {
+      require('./db').exec('PRAGMA optimize');
+    } catch (err) {
+      logger.warn('The SQLite optimize pass failed.', { err: serializeError(err, { includeStack: false }) });
+    }
+
     // Snapshot the panel DB itself - the server backups only cover per-server
     // world dirs, so without this the users/schedules/pins/history/2FA store has
     // no backup at all. VACUUM INTO is a safe hot copy; keep the newest N.

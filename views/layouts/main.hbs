@@ -6,12 +6,15 @@
   {{> app-head}}
 </head>
 <body class="min-h-screen" data-health-count="{{healthCount}}">
+  {{! First stop for keyboard users: jump past the sidebar and topbar. Uses the
+      tooltip slot (70) of the z-index scale so it shows above everything. }}
+  <a href="#main" class="btn btn-primary sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[70]">Skip to Content</a>
   <div class="flex min-h-screen">
     {{> sidebar}}
 
     <div class="flex min-w-0 flex-1 flex-col">
       {{> topbar}}
-      <main class="mx-auto w-full max-w-7xl flex-1 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6 sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] lg:px-8">
+      <main id="main" tabindex="-1" class="mx-auto outline-none w-full max-w-7xl flex-1 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6 sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] lg:px-8">
         {{{body}}}
       </main>
       <footer class="border-t border-line py-3 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] text-xs text-ink-faint sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))]">
@@ -25,6 +28,6 @@
   {{#if user}}{{#unless nav.groups}}{{> app-nav}}{{/unless}}{{/if}}
   <div id="toasts" class="fixed bottom-[calc(1rem+var(--bottom-nav,env(safe-area-inset-bottom)))] right-[calc(1rem+env(safe-area-inset-right))] z-[65] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2"></div>
   {{#if panelLocalization}}<script nonce="{{cspNonce}}">window.OXYX = window.MSM = Object.assign(window.OXYX || window.MSM || {}, {{jsonScript panelLocalization}});</script>{{/if}}
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="{{asset '/js/app.js'}}"></script>
 </body>
 </html>

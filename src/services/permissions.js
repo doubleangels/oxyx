@@ -281,7 +281,7 @@ function parseStored(text) {
 
 /** @param {{ id: string, role: string } | null | undefined} user */
 function roleDefault(user) {
-  return ROLE_DEFAULTS[user && user.role] || [];
+  return (user && ROLE_DEFAULTS[user.role]) || [];
 }
 
 /**

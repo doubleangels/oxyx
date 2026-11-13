@@ -94,7 +94,7 @@ test('before rcon answers, the boot phase comes from the log tail', async () => 
   await tick();
   const snap = liveCache.get('srv_lc4');
   assert.equal(snap.phase.key, 'world-gen');
-  assert.equal(liveCache.statusDetail(snap), 'Generating world');
+  assert.equal(liveCache.statusDetail(snap), 'Generating world…');
   liveCache.detach('srv_lc4');
 });
 

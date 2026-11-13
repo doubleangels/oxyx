@@ -12,7 +12,7 @@ const path = require('node:path');
 const { ZipArchive } = require('archiver');
 const { z } = require('zod');
 const crashes = require('../../crashes');
-const { dataPath } = require('../../storage/pathGuard');
+const { dataPath, serverPath } = require('../../storage/pathGuard');
 const logger = require('../../logger')('crashes');
 const { serializeError } = require('../../utils/logSanitize');
 const permissions = require('../../services/permissions');
@@ -57,7 +57,7 @@ router.get(
     archive.pipe(res);
     for (const row of rows) {
       const abs = row.filename.startsWith('hs_err')
-        ? dataPath('servers', serverId, row.filename)
+        ? serverPath(serverId, row.filename)
         : dataPath('servers', serverId, 'crash-reports', row.filename);
       if (fs.existsSync(abs)) archive.file(abs, { name: path.basename(row.filename) });
     }

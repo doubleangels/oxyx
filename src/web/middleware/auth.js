@@ -151,6 +151,7 @@ const BODY_SCOPED = [
 
 /** 'allow' | 'hidden' | 'deny' for a viewer's write, based on the server in the path or body. */
 function viewerServerVerdict(req) {
+  /** @type {string | null} */
   let serverId = null;
   const m = SERVER_SCOPED.exec(req.path);
   if (m) serverId = decodeSegment(m[1]);
