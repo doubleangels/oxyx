@@ -70,6 +70,28 @@ On Android the installed app appears in the share sheet. Share the page of a mod
 Modrinth, CurseForge, Hangar or SpigotMC to **Oxyx**, pick a server, and its Mods tab opens **Add
 Mod by URL** with the link filled in. Only servers you may add content to are offered.
 
+## On a phone
+
+Every page works on a phone, installed or in the browser: tables fold into cards, toolbars wrap,
+and the bottom tab bar keeps the main pages and a server's tabs one tap away.
+
+<p align="center">
+  <img src="images/mobile/login.png" alt="Sign-in on a phone" width="180">
+  <img src="images/mobile/servers-list.png" alt="Servers list on a phone" width="180">
+  <img src="images/mobile/create-wizard.png" alt="Create Server wizard on a phone" width="180">
+  <img src="images/mobile/world-controls-mobile.png" alt="World Controls on a phone" width="180">
+  <img src="images/mobile/players.png" alt="Players on a phone" width="180">
+  <img src="images/mobile/monitoring.png" alt="Player stats on a phone" width="180">
+  <img src="images/mobile/server-worlds.png" alt="Worlds on a phone" width="180">
+  <img src="images/mobile/server-backups.png" alt="Backups on a phone" width="180">
+  <img src="images/mobile/server-settings.png" alt="Server settings on a phone" width="180">
+  <img src="images/mobile/history.png" alt="Server history on a phone" width="180">
+  <img src="images/mobile/modpacks.png" alt="Modpacks on a phone" width="180">
+  <img src="images/mobile/updates.png" alt="Updates on a phone" width="180">
+  <img src="images/mobile/schedules.png" alt="Schedules on a phone" width="180">
+  <img src="images/mobile/storage.png" alt="Storage on a phone" width="180">
+</p>
+
 ## How it works
 
 The panel sends Web Push through the push service your browser uses (Google for Chrome and Android,
