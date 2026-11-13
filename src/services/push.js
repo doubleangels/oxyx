@@ -71,6 +71,7 @@ const MARK_KEY = 'push_bridge_last_event_id';
 const JOIN_MARK_KEY = 'push_bridge_last_join_id';
 const REPLAY_WINDOW_MINUTES = 30;
 const MAX_FAILURES = 10;
+const MAX_DEVICES_PER_USER = 20;
 // VAPID needs a contact: a mailto: or https: URL identifying the sender.
 const VAPID_SUBJECT = process.env.PUSH_CONTACT || 'https://github.com/doubleangels/oxyx';
 
@@ -239,6 +240,15 @@ async function subscribe(userId, { subscription, deviceName = '', userAgent = ''
     name,
     String(userAgent).slice(0, 300),
     JSON.stringify(merged)
+  );
+  // A browser that keeps handing out new endpoints (cleared site data, a
+  // reinstall) would otherwise pile up dead rows: keep the newest ones.
+  db.run(
+    `DELETE FROM push_subscriptions WHERE user_id = ? AND id NOT IN (
+       SELECT id FROM push_subscriptions WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?)`,
+    userId,
+    userId,
+    MAX_DEVICES_PER_USER
   );
   logger.info('Turned push notifications on for a device.', { userId, deviceId: id });
   return rowToDevice(db.get('SELECT * FROM push_subscriptions WHERE id = ?', id));

@@ -227,3 +227,12 @@ test('the Mobile App page and the share target render for any signed-in user', a
   assert.equal(manifest.start_url, '/?launch=app');
   assert.equal(manifest.id, '/', 'the app identity stays the same');
 });
+
+test('a user keeps at most 20 devices; the oldest go first', async () => {
+  db.run('DELETE FROM push_subscriptions');
+  const first = await push.subscribe(adminId, { subscription: fakeSubscription(), deviceName: 'First' });
+  for (let i = 0; i < 20; i++) await push.subscribe(adminId, { subscription: fakeSubscription(), deviceName: `D${i}` });
+  const devices = push.listDevices(adminId);
+  assert.equal(devices.length, 20);
+  assert.ok(!devices.some((d) => d.id === first.id), 'the oldest device was dropped');
+});

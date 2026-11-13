@@ -8,7 +8,7 @@
 // from the panel (crashes, problems, updates, ...), which arrive even when the
 // app is closed. See services/push.js and the Mobile App settings page.
 
-const CACHE = 'oxyx-shell-v4';
+const CACHE = 'oxyx-shell-v5';
 const SHELL = ['/offline.html', '/css/app.css', '/favicon.svg', '/icons/oxyx-192.png'];
 
 self.addEventListener('install', (event) => {
@@ -134,16 +134,19 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 // window on the right page, or opens one.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/';
+  const wanted = event.notification.data && event.notification.data.url;
+  // Only ever a page of this panel.
+  const target = typeof wanted === 'string' && wanted.startsWith('/') && !wanted.startsWith('//') ? wanted : '/';
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
-      for (const w of wins) {
-        if ('focus' in w) {
-          w.navigate(target).catch(() => {});
-          return w.focus();
-        }
+    (async () => {
+      const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const win = wins.find((w) => 'focus' in w);
+      if (win) {
+        // navigate() only works on a window this worker controls; otherwise open one.
+        const moved = await win.navigate(target).catch(() => null);
+        if (moved) return moved.focus();
       }
       return self.clients.openWindow(target);
-    })
+    })()
   );
 });

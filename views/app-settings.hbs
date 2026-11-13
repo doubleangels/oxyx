@@ -75,6 +75,8 @@
     {{/settings/card}}
 
     {{#> settings/card heading="Your Devices" icon="monitor-smartphone" id="app-devices" desc="Every phone, tablet or computer where you turned notifications on."}}
+      <template data-icon-phone>{{{icon 'smartphone' 'size-4'}}}</template>
+      <template data-icon-computer>{{{icon 'monitor' 'size-4'}}}</template>
       <div class="divide-y divide-line" data-push-devices>
         <p class="empty-inline">Loading…</p>
       </div>

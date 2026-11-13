@@ -10,7 +10,7 @@ const httpError = require('../utils/httpError');
 const logger = require('../logger')(path.basename(__filename));
 
 // Bookkeeping keys (a "last seen" cursor) move on their own all the time.
-const BOOKKEEPING_KEY = /(mark|cursor|last[-_]?seen|last[-_]?run|checked[-_]?at)/i;
+const BOOKKEEPING_KEY = /(mark|cursor|bridge|last[-_]?seen|last[-_]?run|checked[-_]?at)/i;
 
 /**
  * @param {string} key

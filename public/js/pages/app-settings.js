@@ -47,6 +47,7 @@ function init() {
   let config = null;
   let subscription = null;
   let device = null;
+  let pushBroken = false;
 
   const setState = (label, kind) => {
     state.textContent = label;
@@ -153,6 +154,13 @@ function init() {
     $('[data-push-quiet-times]').classList.toggle('opacity-50', !e.target.checked);
   });
 
+  // Lucide icons rendered by the server into <template>s (no icon set in the browser).
+  function deviceIcon(userAgent) {
+    const phone = /mobile|android|iphone|ipad/i.test(userAgent || '');
+    const tpl = root.querySelector(phone ? '[data-icon-phone]' : '[data-icon-computer]');
+    return tpl ? tpl.innerHTML : '';
+  }
+
   function renderDevices() {
     const list = $('[data-push-devices]');
     if (!config.devices.length) {
@@ -165,7 +173,7 @@ function init() {
       (d) =>
         html`<div class="flex flex-wrap items-center gap-3 py-3" data-device="${d.id}">
           <span class="grid size-9 shrink-0 place-items-center rounded-md bg-inset text-ink-faint"
-            >${raw(d.userAgent && /mobile|android|iphone/i.test(d.userAgent) ? '📱' : '💻')}</span
+            >${raw(deviceIcon(d.userAgent))}</span
           >
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
@@ -197,8 +205,16 @@ function init() {
       return;
     }
     device = config.thisDevice;
+    // Made for an older panel key: show it as off so Turn On redoes it.
+    if (subscription && staleKey(subscription)) device = null;
     renderDevices();
     addServerStartOptions(config.servers);
+    if (pushBroken) {
+      setState('Not Available Here', 'warn');
+      help.textContent =
+        'The panel could not start its background worker in this browser, so notifications cannot be turned on. Reload the page to try again.';
+      return;
+    }
     if (!pushSupported) {
       setState('Not Available Here', 'warn');
       help.textContent = !secure
@@ -233,12 +249,35 @@ function init() {
     }
   }
 
+  // serviceWorker.ready never settles when the worker failed to register, so
+  // give up after a while instead of leaving the page on "Checking…".
+  function workerReady() {
+    return Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('worker')), 8000)),
+    ]);
+  }
+
   async function start() {
     if (pushSupported) {
-      const reg = await navigator.serviceWorker.ready;
-      subscription = await reg.pushManager.getSubscription();
+      try {
+        const reg = await workerReady();
+        subscription = await reg.pushManager.getSubscription();
+      } catch {
+        pushBroken = true;
+      }
     }
     await load();
+  }
+
+  // True when the browser's subscription was made for another panel key (the
+  // key was regenerated): pushes to it would be refused, so it must be redone.
+  function staleKey(sub) {
+    const key = sub && sub.options && sub.options.applicationServerKey;
+    if (!key) return false;
+    const want = keyBytes(config.publicKey);
+    const have = new Uint8Array(key);
+    return have.length !== want.length || have.some((b, i) => b !== want[i]);
   }
 
   enableBtn.addEventListener('click', () =>
@@ -249,13 +288,16 @@ function init() {
         return load();
       }
       try {
-        const reg = await navigator.serviceWorker.ready;
-        subscription =
-          (await reg.pushManager.getSubscription()) ||
-          (await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: keyBytes(config.publicKey),
-          }));
+        const reg = await workerReady();
+        subscription = await reg.pushManager.getSubscription();
+        if (subscription && staleKey(subscription)) {
+          await subscription.unsubscribe().catch(() => {});
+          subscription = null;
+        }
+        subscription ||= await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: keyBytes(config.publicKey),
+        });
         await api('/api/account/push/subscribe', {
           method: 'POST',
           body: { subscription: subscription.toJSON(), deviceName: guessDeviceName(), prefs: config.defaults },

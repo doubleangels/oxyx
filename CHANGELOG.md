@@ -28,6 +28,25 @@ its own dated entry.
 
 ### Fixed
 
+- **Push notifications recover from a new panel key.** If the panel ever has to make a new push
+  key, a device that had notifications on now shows them as off, and Turn On makes a fresh
+  subscription instead of reusing the old one that could no longer receive anything. If the
+  browser cannot start the panel's background worker, the page now says so instead of staying on
+  Checking… forever.
+- **Tapping a notification always lands on the right page.** When the open window could not be
+  moved, the tap only brought it to the front. It now opens the page in a new window instead, and
+  only ever opens pages of the panel.
+- **A user keeps at most 20 notification devices.** A browser that keeps changing its push address
+  (cleared site data, a reinstall) no longer piles up dead entries. The oldest go first.
+- **No more log line for every history event.** The push bridge's position was logged at info as a
+  panel setting change each time something happened. It is now treated like the Discord bridge's
+  position and logged at debug.
+- **Screen reader labels.** Search boxes, the chat message field, the inventory search, the
+  wizard's memory and disk sliders, the Discord check-in minutes, and every field-catalog setting
+  now announce what they are.
+- **Your Devices uses the panel's icons** instead of emoji.
+- **Dependency updates.** sanitize-html 2.18 fixes three moderate advisories in how user-supplied
+  HTML is cleaned, and the other dependencies move to their latest compatible versions.
 - **Install App gives the right steps for your browser.** The dialog is now titled Install Oxyx
   and names the app, and shows the real menu path for Safari, Chrome and Edge on iPhone and iPad,
   Chrome, Edge, Samsung Internet and Firefox on Android, Safari on a Mac (Add to Dock), and Chrome

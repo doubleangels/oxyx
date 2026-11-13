@@ -49,6 +49,18 @@ module.exports = [
     },
   },
   {
+    // The service worker: a classic script with the worker's own globals.
+    files: ['public/sw.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.serviceworker },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
     // Browser client code (ES modules).
     files: ['public/js/**/*.js'],
     languageOptions: {

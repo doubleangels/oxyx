@@ -79,7 +79,7 @@
           <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <span>Send privately after</span>
             {{! The number and its unit wrap together, never apart. }}
-            <span class="inline-flex items-center gap-2 whitespace-nowrap"><input class="input w-20" type="number" inputmode="numeric" id="ig-wz-checkin-minutes" min="0" max="1440" value="{{integrations.wizard.checkinMinutes}}"> <span class="text-ink-soft">minutes online</span></span>
+            <span class="inline-flex items-center gap-2 whitespace-nowrap"><input class="input w-20" type="number" inputmode="numeric" id="ig-wz-checkin-minutes" aria-label="Minutes online before the message is sent" min="0" max="1440" value="{{integrations.wizard.checkinMinutes}}"> <span class="text-ink-soft">minutes online</span></span>
           </div>
           <p class="help">Sent once per play session. Set 0 to disable. The message may also use <code class="code-inline">{minutes}</code>.</p>
         </div>

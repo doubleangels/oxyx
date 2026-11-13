@@ -2,7 +2,7 @@
 
   <div class="mb-4 flex flex-wrap items-center gap-2">
     {{#if players.length}}
-    <input class="input w-full sm:w-auto sm:max-w-xs" placeholder="Search players…" id="players-search">
+    <input class="input w-full sm:w-auto sm:max-w-xs" placeholder="Search players…" id="players-search" aria-label="Search players" type="search">
     <select class="input w-full sm:w-auto" id="players-filter" data-label="Filter players">
       <option value="all">All Players</option>
       <option value="online">Online</option>
